@@ -75,3 +75,18 @@
 ### 개발 규칙
 - **커밋 크기:** 커밋 1개는 설명 가능한 단일 변경 단위로 작성합니다.
 - **Flyway 관리:** DB 스키마 충돌 방지를 위해 Flyway 마이그레이션 파일 추가는 별도 커밋으로 분리를 권장합니다.
+  - [Flyway 가이드(Notion)](https://www.notion.so/Flyway-2e1b40db26dd808a9633e76420c94b07)
+
+
+**Flyway .sql 파일명 규칙**
+
+*‘첫 버전’ 파일명은 예외적으로 **V1__init.sql**로 지정합니다.*
+```
+V[타임스탬프10자리 숫자]__[설명].sql # yymmddhhmm
+
+# 25년11월25일 16시23분에 생성한 파일
+ex) V2511251623__brewery_update_column_start_time.sql
+
+# 25년11월25일 17시20분에 생성한 파일
+ex) V2511251720__brewery_add_constraint_start_time.sql
+```
