@@ -1,0 +1,8 @@
+spring:
+  datasource:
+    url: ${LOCAL_DB_PATH}
+    username: ${LOCAL_DB_USERNAME}
+    password: ${LOCAL_DB_PASSWORD}
+  config:
+    # src/main/resources 경로에 위치한 .env 파일의 환경변수를 주입
+    import: optional:classpath:/.env[.properties]
