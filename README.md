@@ -1,4 +1,4 @@
-# 프로젝트 명칭: 대용량 통신 요금 명세서 및 알림 발송 시스템
+# 대용량 통신 요금 명세서 및 알림 발송 시스템
 
 ---
 
@@ -22,6 +22,8 @@
 - **Version Control:** GitHub
 - **Communication:** Slack, Discord
 - **IDE:** STS, IntelliJ
+
+*제공되는 .env 파일을 src/main/resources 경로에 배치시켜주세요. 해당 파일은 절대 Github에 올리지 말아주세요.*
 
 ### 브랜치 전략
 > 브랜치는 기능별(이슈 1개)로 생성하며, 작업 완료 후 PR(Pull Request)을 통해 머지합니다.
