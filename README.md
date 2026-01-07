@@ -4,15 +4,15 @@
 
 ## 1. 기술 스택 (Tech Stack)
 
-| 분류 | 기술 스택 |
-| :--- | :--- |
-| **Language** | Java 17 |
-| **Framework** | Spring Boot 3 |
-| **Database** | MySQL 8 |
-| **ORM/Mapper** | MyBatis |
-| **Migration** | Flyway |
-| **Build Tool** | Gradle |
-| **Frontend** | Thymeleaf |
+| 분류 | 기술 스택             |
+| :--- |:------------------|
+| **Language** | Java 17           |
+| **Framework** | Spring Boot 3.5.9 |
+| **Database** | MySQL 8           |
+| **ORM/Mapper** | MyBatis           |
+| **Migration** | Flyway            |
+| **Build Tool** | Gradle            |
+| **Frontend** | Thymeleaf         |
 
 ---
 
@@ -24,12 +24,12 @@
 - **IDE:** STS, IntelliJ
 
 ### 브랜치 전략
-> 브랜치는 기능별로 생성하며, 작업 완료 후 PR(Pull Request)을 통해 머지합니다.
+> 브랜치는 기능별(이슈 1개)로 생성하며, 작업 완료 후 PR(Pull Request)을 통해 머지합니다.
 
 #### 브랜치 네이밍 규칙
 - **형식:** type/{issueId}-{short-desc}
 - **규칙:** 소문자 사용, 단어 사이 하이픈(-) 연결
-- **issueId:** GitHub Issue 식별자 (없을 경우 BE-YYYYMMDD-01 형식 허용)
+- **issueId:** GitHub Issue 식별자 (없을 경우 YYYYMMDD-01 형식 허용)
 
 | Type | 설명 | 예시 |
 | :--- | :--- | :--- |
@@ -39,7 +39,7 @@
 | **chore** | 설정 및 의존성 수정 | chore/05-add-flyway |
 
 #### 브랜치 생성 및 머지 흐름
-- 모든 작업 브랜치는 dev 브랜치에서 분기합니다.
+- 모든 작업 브랜치는 **dev** 브랜치에서 분기합니다.
 - **분기:** git checkout -b feat/... origin/dev
 - **PR 대상:** 모든 PR은 항상 dev 브랜치를 타겟으로 생성합니다.
 
