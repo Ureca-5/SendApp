@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${RDS_URL}
-    username: ${RDS_USERNAME}
-    password: ${RDS_PASSWORD}
+    url: ${PROD_DB_URL}
+    username: ${PROD_DB_USERNAME}
+    password: ${PROD_DB_PASSWORD}
   config:
     # jar 파일과 동일 디렉토리에 위치한 .env 파일의 환경변수를 주입
     import: optional:file:./.env[.properties]

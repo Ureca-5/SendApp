@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${LOCAL_DB_PATH}
+    url: ${LOCAL_DB_URL}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=utf8&useUnicode=true&allowPublicKeyRetrieval=true
     username: ${LOCAL_DB_USERNAME}
     password: ${LOCAL_DB_PASSWORD}
   config:
