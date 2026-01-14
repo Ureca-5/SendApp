@@ -1,4 +1,8 @@
 spring:
+  data:
+    redis:
+      host: localhost  # 도커가 띄워준 레디스 주소
+      port: 6379       # 레디스 포트
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
   # 커넥션 풀 개수 설정
