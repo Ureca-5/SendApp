@@ -1,6 +1,11 @@
 # 대용량 통신 요금 명세서 및 알림 발송 시스템
 
 ---
+# Diagram
+## 배치 시퀀스 다이어그램
+<img width="7820" height="5240" alt="Image" src="https://github.com/user-attachments/assets/838185f3-6cbf-456d-8800-14247901d706" />
+
+# Info
 
 ## 1. 기술 스택 (Tech Stack)
 
