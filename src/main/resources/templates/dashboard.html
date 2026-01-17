@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout(~{::#content})">
+<body>
+
+<section id="content">
+  <div class="panel__head">
+    <h2 class="panel__title">Overview</h2>
+    <div class="panel__meta">
+      <span class="chip">billing_yyyymm:
+        <strong th:text="${billing_yyyymm} ?: 'N/A'">202601</strong>
+      </span>
+    </div>
+  </div>
+
+  <div class="panel__body">
+    <div class="grid">
+      <div class="card">
+        <div class="card__label">Invoices</div>
+        <div class="card__value">-</div>
+      </div>
+      <div class="card">
+        <div class="card__label">Delivery Success</div>
+        <div class="card__value">-</div>
+      </div>
+      <div class="card">
+        <div class="card__label">Failures</div>
+        <div class="card__value">-</div>
+      </div>
+    </div>
+
+    <div class="empty">
+      <div class="empty__title">Dashboard skeleton</div>
+      <div class="empty__desc">데이터/차트/액션은 아직 없음</div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

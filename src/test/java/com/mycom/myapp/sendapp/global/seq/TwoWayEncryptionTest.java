@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * **/
 class TwoWayEncryptionTest {
 
-  private static final String KEYSET_B64 = "eyJwcmltYXJ5S2V5SWQiOjg2MTQ3MTkxNCwia2V5IjpbeyJrZXlEYXRhIjp7InR5cGVVcmwiOiJ0eXBlLmdvb2dsZWFwaXMuY29tL2dvb2dsZS5jcnlwdG8udGluay5BZXNTaXZLZXkiLCJ2YWx1ZSI6IkVrQi84K1R0YWk1TkxvWlU0MGtraTcrNS9RdlZFSE0vTHVDM01JaW1BSUpiQVVpV3BSTXVtajIxM1dlOGthY1JGMitvVEhuVGM3WEhUdE9LTTNJWkxEVTciLCJrZXlNYXRlcmlhbFR5cGUiOiJTWU1NRVRSSUMifSwic3RhdHVzIjoiRU5BQkxFRCIsImtleUlkIjo4NjE0NzE5MTQsIm91dHB1dFByZWZpeFR5cGUiOiJUSU5LIn1dfQ0K"; //test key 활용
+  private static final String KEYSET_B64 = ""; //test key 활용
 
   private static final byte[] AD_EMAIL = "users.email".getBytes(StandardCharsets.UTF_8);
   private static final byte[] AD_PHONE = "users.phone".getBytes(StandardCharsets.UTF_8);
