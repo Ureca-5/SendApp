@@ -1,6 +1,7 @@
-// 파일이 로드되자마자 콘솔에 출력
-console.log("LOG: 타임리프 JS 연동 성공");
-
-function testAlert() {
-    alert("자바스크립트 파일이 정상적으로 연결되었습니다.");
-}
+// 기능 없음: 레이아웃 껍데기만
+(() => {
+  // DOM 준비 확인용(원하면 나중에 네비 active 처리, 필터 유지 등 붙이면 됨)
+  document.addEventListener("DOMContentLoaded", () => {
+    // noop
+  });
+})();

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content)">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title th:text="${pageTitle} ?: 'Admin'">Admin</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}" />
+</head>
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand__title">SendApp</div>
+      <div class="brand__subtitle">Ops Console</div>
+    </div>
+
+    <nav class="sidebar__nav">
+      <a class="nav__item"
+         th:classappend="${activeMenu}=='dashboard' ? ' is-active' : ''"
+         th:href="@{/}">
+        Dashboard
+      </a>
+
+      <a class="nav__item"
+         th:classappend="${activeMenu}=='users' ? ' is-active' : ''"
+         th:href="@{/users}">
+        Users
+      </a>
+
+      <a class="nav__item"
+         th:classappend="${activeMenu}=='invoices' ? ' is-active' : ''"
+         th:href="@{/invoices}">
+        Invoices
+      </a>
+
+      <a class="nav__item"
+         th:classappend="${activeMenu}=='billing' ? ' is-active' : ''"
+         th:href="@{/billing}">
+        Billing Histories
+      </a>
+
+      <a class="nav__item"
+         th:classappend="${activeMenu}=='delivery' ? ' is-active' : ''"
+         th:href="@{/delivery}">
+        Delivery
+      </a>
+
+      <a class="nav__item"
+         th:classappend="${activeMenu}=='batch' ? ' is-active' : ''"
+         th:href="@{/batch}">
+        Batch
+      </a>
+    </nav>
+
+    <div class="sidebar__footer">
+      <div class="muted">Internal only</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Header -->
+    <header class="header">
+      <div class="header__left">
+        <h1 class="header__title" th:text="${pageTitle} ?: 'Dashboard'">Dashboard</h1>
+        <p class="header__desc" th:text="${pageDesc} ?: 'Operations dashboard'">Operations dashboard</p>
+      </div>
+
+      <div class="header__right">
+        <!-- Global Filter (billing_yyyymm) -->
+        <form class="global-filter" method="get" th:action="@{${filterAction} ?: '/'}">
+          <label class="global-filter__label" for="billingYyyymm">Billing YYYYMM</label>
+          <input
+            id="billingYyyymm"
+            name="billing_yyyymm"
+            class="input"
+            inputmode="numeric"
+            maxlength="6"
+            placeholder="202601"
+            th:value="${billing_yyyymm}"
+            aria-label="Billing YYYYMM"
+          />
+          <button class="btn" type="submit">Apply</button>
+        </form>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="content">
+      <section class="panel" th:replace="${content}">
+        <div class="panel__body">Content</div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span class="muted">© SendApp Ops Console</span>
+    </footer>
+  </div>
+</div>
+
+<script th:src="@{/js/app.js}"></script>
+</body>
+</html>
