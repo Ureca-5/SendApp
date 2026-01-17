@@ -4,34 +4,41 @@
 <body>
 
 <section id="content">
-  <div class="panel__head">
-    <h2 class="panel__title">Overview</h2>
-    <div class="panel__meta">
-      <span class="chip">billing_yyyymm:
-        <strong th:text="${billing_yyyymm} ?: 'N/A'">202601</strong>
-      </span>
-    </div>
-  </div>
-
-  <div class="panel__body">
-    <div class="grid">
-      <div class="card">
-        <div class="card__label">Invoices</div>
-        <div class="card__value">-</div>
-      </div>
-      <div class="card">
-        <div class="card__label">Delivery Success</div>
-        <div class="card__value">-</div>
-      </div>
-      <div class="card">
-        <div class="card__label">Failures</div>
-        <div class="card__value">-</div>
+  <div class="panel">
+    
+    <div class="panel__head">
+      <h2 class="panel__title">청구 발송 현황 (Overview)</h2>
+      <div class="panel__meta">
+        <span class="chip">청구월: 
+          <strong th:text="${billing_yyyymm} ?: '2026-01'">2026-01</strong>
+        </span>
       </div>
     </div>
 
-    <div class="empty">
-      <div class="empty__title">Dashboard skeleton</div>
-      <div class="empty__desc">데이터/차트/액션은 아직 없음</div>
+    <div class="panel__body">
+      
+      <div class="grid">
+        <div class="card">
+          <div class="card__label">총 청구 건수</div>
+          <div class="card__value" th:text="${totalCount} ?: '0'">0</div>
+        </div>
+        <div class="card">
+          <div class="card__label">발송 성공</div>
+          <div class="card__value" th:text="${successCount} ?: '0'">0</div>
+        </div>
+        <div class="card">
+          <div class="card__label">발송 실패</div>
+          <div class="card__value" style="color: #666;" th:text="${failCount} ?: '0'">0</div>
+        </div>
+      </div>
+
+      <div class="empty" th:if="${totalCount == null or totalCount == 0}">
+        <div class="empty__title">데이터가 없습니다</div>
+        <div class="empty__desc">배치 작업이 시작되면 이곳에 현황이 표시됩니다.</div>
+        <br>
+        <button type="button" class="btn btn--primary">배치 수동 실행</button>
+      </div>
+
     </div>
   </div>
 </section>

@@ -1,5 +1,7 @@
 package com.mycom.myapp.sendapp.global.crypto;
 
+import java.util.Arrays;
+
 /**
  * 외부 노출용 마스킹 유틸.
  *
@@ -9,7 +11,31 @@ package com.mycom.myapp.sendapp.global.crypto;
 public final class Masker {
 
     private Masker() {}
+    
+    public static String maskName(String name) {
+        if (name == null || name.isEmpty()) {
+            return "";
+        }
 
+        int length = name.length();
+
+        // 1. 이름이 1글자인 경우 ("*" 처리)
+        if (length <= 1) {
+            return "*";
+        }
+
+        // 2. 이름이 2글자인 경우 (김철 -> 김*)
+        if (length == 2) {
+            return name.charAt(0) + "*";
+        }
+
+        // 3. 이름이 3글자 이상인 경우 (홍길동 -> 홍*동, 남궁민수 -> 남**수)
+        char[] stars = new char[length - 2];
+        Arrays.fill(stars, '*');
+        
+        return name.charAt(0) + new String(stars) + name.charAt(length - 1);
+    }
+    
     public static String maskPhone010(String phone11) {
         if (phone11 == null || phone11.length() != 11) return "";
         // 01012345678 -> 010****5678
