@@ -1,4 +1,4 @@
-package com.mycom.myapp.sendapp.support;
+package com.mycom.myapp.sendapp.batch.support;
 
 import lombok.NonNull;
 

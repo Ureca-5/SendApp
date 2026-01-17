@@ -1,8 +1,8 @@
 package com.mycom.myapp.sendapp.batch.tasklet;
 
 import com.mycom.myapp.sendapp.batch.guard.BatchStartGuard;
-import com.mycom.myapp.sendapp.support.BatchClock;
-import com.mycom.myapp.sendapp.support.HostIdentifier;
+import com.mycom.myapp.sendapp.batch.support.BatchClock;
+import com.mycom.myapp.sendapp.batch.support.HostIdentifier;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepContribution;

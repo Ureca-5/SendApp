@@ -1,4 +1,4 @@
-package com.mycom.myapp.sendapp.support;
+package com.mycom.myapp.sendapp.batch.support;
 
 /**
  * 배치 실행 주체(호스트/프로세스/인스턴스)를 식별하기 위한 추상화.
