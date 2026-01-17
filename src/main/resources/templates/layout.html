@@ -1,105 +1,48 @@
 <!doctype html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(content)">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:fragment="layout (content)">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title th:text="${pageTitle} ?: 'Admin'">Admin</title>
-  <link rel="stylesheet" th:href="@{/css/style.css}" />
+    <meta charset="UTF-8">
+    <title>Bill Admin System</title>
+    <link rel="stylesheet" href="/css/style.css"> 
 </head>
 <body>
+
 <div class="app">
+    <aside class="sidebar">
+        <div class="sidebar__brand">
+            <div class="brand__title">Bill Admin</div>
+            <div class="brand__subtitle">LG U+ Billing System</div>
+        </div>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar__brand">
-      <div class="brand__title">SendApp</div>
-      <div class="brand__subtitle">Ops Console</div>
-    </div>
+        <nav class="sidebar__nav">
+            <a href="/" class="nav__item is-active">Dashboard</a>
+            <a href="/users" class="nav__item">Users</a>
+            <a href="/bills" class="nav__item">Invoices</a>
+        </nav>
+        
+        <div style="margin-top: auto; font-size: 12px; color: #999;">
+            Server: v1.0.2
+        </div>
+    </aside>
 
-    <nav class="sidebar__nav">
-      <a class="nav__item"
-         th:classappend="${activeMenu}=='dashboard' ? ' is-active' : ''"
-         th:href="@{/}">
-        Dashboard
-      </a>
+    <main class="main">
+        <header class="header">
+            <h1 class="header__title">관리자 시스템</h1>
+            <div class="header__user">Admin 님</div>
+        </header>
 
-      <a class="nav__item"
-         th:classappend="${activeMenu}=='users' ? ' is-active' : ''"
-         th:href="@{/users}">
-        Users
-      </a>
+        <div th:replace="${content}"></div>
 
-      <a class="nav__item"
-         th:classappend="${activeMenu}=='invoices' ? ' is-active' : ''"
-         th:href="@{/invoices}">
-        Invoices
-      </a>
-
-      <a class="nav__item"
-         th:classappend="${activeMenu}=='billing' ? ' is-active' : ''"
-         th:href="@{/billing}">
-        Billing Histories
-      </a>
-
-      <a class="nav__item"
-         th:classappend="${activeMenu}=='delivery' ? ' is-active' : ''"
-         th:href="@{/delivery}">
-        Delivery
-      </a>
-
-      <a class="nav__item"
-         th:classappend="${activeMenu}=='batch' ? ' is-active' : ''"
-         th:href="@{/batch}">
-        Batch
-      </a>
-    </nav>
-
-    <div class="sidebar__footer">
-      <div class="muted">Internal only</div>
-    </div>
-  </aside>
-
-  <!-- Main -->
-  <div class="main">
-    <!-- Header -->
-    <header class="header">
-      <div class="header__left">
-        <h1 class="header__title" th:text="${pageTitle} ?: 'Dashboard'">Dashboard</h1>
-        <p class="header__desc" th:text="${pageDesc} ?: 'Operations dashboard'">Operations dashboard</p>
-      </div>
-
-      <div class="header__right">
-        <!-- Global Filter (billing_yyyymm) -->
-        <form class="global-filter" method="get" th:action="@{${filterAction} ?: '/'}">
-          <label class="global-filter__label" for="billingYyyymm">Billing YYYYMM</label>
-          <input
-            id="billingYyyymm"
-            name="billing_yyyymm"
-            class="input"
-            inputmode="numeric"
-            maxlength="6"
-            placeholder="202601"
-            th:value="${billing_yyyymm}"
-            aria-label="Billing YYYYMM"
-          />
-          <button class="btn" type="submit">Apply</button>
-        </form>
-      </div>
-    </header>
-
-    <!-- Content -->
-    <main class="content">
-      <section class="panel" th:replace="${content}">
-        <div class="panel__body">Content</div>
-      </section>
+        <footer class="footer">
+            <div class="footer__left">
+                &copy; 2026 LG Uplus Corp. All rights reserved.
+            </div>
+            <div class="footer__right">
+                <a href="#">이용약관</a> | <a href="#">개인정보처리방침</a>
+            </div>
+        </footer>
     </main>
-
-    <footer class="footer">
-      <span class="muted">© SendApp Ops Console</span>
-    </footer>
-  </div>
 </div>
 
-<script th:src="@{/js/app.js}"></script>
 </body>
 </html>

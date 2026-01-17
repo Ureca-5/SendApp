@@ -23,7 +23,11 @@ public final class ContactProtector {
     public ContactProtector(DeterministicAead daead) {
         this.daead = daead;
     }
-
+    
+    public String maskedName(String plainName) {
+    	return Masker.maskName(plainName);
+    }
+    
     public String maskedEmail(EncryptedString emailEnc) throws Exception {
         String plain = decryptV1(emailEnc, AD_EMAIL);
         return Masker.maskEmail(plain);

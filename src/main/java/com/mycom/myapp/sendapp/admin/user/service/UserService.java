@@ -35,17 +35,16 @@ public class UserService {
 			try {
 				return new UserRowViewDTO(
 				        r.usersId(),
-				        r.name(),
+				        protector.maskedName(r.name()),
 				        protector.maskedEmail(EncryptedString.of(r.emailEnc())),
 				        protector.maskedPhone(EncryptedString.of(r.phoneEnc())),
 				        r.joinedAt(),
 				        r.withdrawn()
 				);
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
+				return null;
 			}
-			return null;
 		}).toList();
     }
 }
