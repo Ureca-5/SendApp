@@ -25,9 +25,27 @@ public class DeliveryStatusRepository {
 	private final JdbcTemplate jdbcTemplate;
     private static final DeliveryStatusRowMapper ROW_MAPPER = new DeliveryStatusRowMapper();
 
-    /**
-     * 내부 정적 RowMapper 클래스
-     */
+    
+    // 중복 발송 방지를 위한 상태 선점 (READY/FAILED -> PROCESSING)
+    public boolean updateStatusToProcessing(Long id, String channel) {
+        String sql = "UPDATE delivery_status SET status = 'PROCESSING' " +
+                     "WHERE delivery_status_id = ? " +
+                     "AND status IN ('READY', 'FAILED') " +
+                     "AND delivery_channel = ?";
+        
+        int affectedRows = jdbcTemplate.update(sql, id, channel);
+        return affectedRows == 1;
+    }
+    
+    // 발송 결과 업데이트
+    public void updateResult(Long id, DeliveryStatusType status, LocalDateTime lastAttemptAt) {
+        String sql = "UPDATE delivery_status SET status = ?, last_attempt_at = ? " +
+                     "WHERE delivery_status_id = ?";
+        
+        jdbcTemplate.update(sql, status.name(), Timestamp.valueOf(lastAttemptAt), id);
+    }
+    
+    // 내부 정적 RowMapper 클래스
     private static final class DeliveryStatusRowMapper implements RowMapper<DeliveryStatus> {
         @Override
         public DeliveryStatus mapRow(ResultSet rs, int rowNum) throws SQLException {
@@ -47,9 +65,7 @@ public class DeliveryStatusRepository {
                     .build();
         }
 
-        /**
-         * Timestamp를 LocalDateTime으로 안전하게 변환하는 유틸리티 메서드
-         */
+        // Timestamp를 LocalDateTime으로 안전하게 변환하는 유틸리티 메서드
         private LocalDateTime getLocalDateTime(ResultSet rs, String columnName) throws SQLException {
             Timestamp ts = rs.getTimestamp(columnName);
             return (ts != null) ? ts.toLocalDateTime() : null;
