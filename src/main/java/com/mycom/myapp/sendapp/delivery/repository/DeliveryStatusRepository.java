@@ -26,7 +26,7 @@ public class DeliveryStatusRepository {
     private static final DeliveryStatusRowMapper ROW_MAPPER = new DeliveryStatusRowMapper();
 
     
-    // 중복 발송 방지를 위한 상태 선점 (READY/FAILED -> PROCESSING)
+    // 중복 발송 방지를 위한 상태 선점 
     public boolean updateStatusToProcessing(Long id, String channel) {
         String sql = "UPDATE delivery_status SET status = 'PROCESSING' " +
                      "WHERE delivery_status_id = ? " +
