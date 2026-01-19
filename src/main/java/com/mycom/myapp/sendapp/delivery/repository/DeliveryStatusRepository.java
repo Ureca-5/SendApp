@@ -28,7 +28,7 @@ public class DeliveryStatusRepository {
     
     // 중복 발송 방지를 위한 상태 선점 
     public boolean updateStatusToProcessing(Long id, String channel) {
-        String sql = "UPDATE delivery_status SET status = 'PROCESSING' " +
+        String sql = "UPDATE delivery_status SET status = 'PROCESSING', last_attempt_at = NOW() " +
                      "WHERE delivery_status_id = ? " +
                      "AND status IN ('READY', 'FAILED') " +
                      "AND delivery_channel = ?";
