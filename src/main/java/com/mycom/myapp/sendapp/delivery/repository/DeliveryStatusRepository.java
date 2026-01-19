@@ -6,17 +6,14 @@ import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryStatusType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
-import java.sql.PreparedStatement;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
+
 
 @Repository  
 @RequiredArgsConstructor 
@@ -28,7 +25,7 @@ public class DeliveryStatusRepository {
     
     // 중복 발송 방지를 위한 상태 선점 
     public boolean updateStatusToProcessing(Long id, String channel) {
-        String sql = "UPDATE delivery_status SET status = 'PROCESSING' " +
+        String sql = "UPDATE delivery_status SET status = 'PROCESSING', last_attempt_at = NOW() " +
                      "WHERE delivery_status_id = ? " +
                      "AND status IN ('READY', 'FAILED') " +
                      "AND delivery_channel = ?";
