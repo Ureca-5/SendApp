@@ -47,4 +47,9 @@ public class UserService {
 			}
 		}).toList();
     }
+
+	public Object search(String keyword, Boolean withdrawn, int p, int s) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }

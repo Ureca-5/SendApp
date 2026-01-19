@@ -353,3 +353,22 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   .field { width: 100%; }
   .input, .select { width: 100% !important; }
 }
+/* ===== Common utilities (add-on) ===== */
+.panel__meta { display: flex; gap: 8px; align-items: center; }
+
+.ta-right { text-align: right !important; }
+.ta-center { text-align: center !important; }
+
+.btn--ghost {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+.btn--ghost:hover { background: var(--panel-secondary); }
+
+.chip--success { background: var(--success-bg); color: var(--success); }
+.chip--danger  { background: var(--danger-bg);  color: var(--danger); }
+.chip--neutral { background: var(--panel-secondary); color: var(--text-muted); }
+
+/* make empty tables consistent */
+.table .td-muted { text-align: center; }
