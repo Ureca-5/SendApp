@@ -15,7 +15,7 @@ public final class EncryptedString {
 
     private final String packed; // e.g. v1:Base64...
 
-    private EncryptedString(String packed) {
+    public EncryptedString(String packed) {
         this.packed = packed;
     }
 
