@@ -1,11 +1,12 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org"
-      th:replace="layout :: layout(~{::#content})">
+      th:replace="~{layout :: layout(~{::#content})}">
+
 <body>
 
 <section id="content">
   <div class="panel">
-    
+
     <div class="panel__head">
       <h2 class="panel__title">고객 조회 (Users)</h2>
       <div class="panel__meta">
@@ -15,21 +16,22 @@
 
     <div class="panel__body">
 
-      <form class="filterbar" method="get" th:action="@{/users}" style="background: #f8f8f8; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <form class="filterbar" method="get" th:action="@{/users}"
+            style="background:#f8f8f8; padding:20px; border-radius:8px; margin-bottom:20px;">
         <input type="hidden" name="billing_yyyymm" th:value="${billing_yyyymm}" />
         <input type="hidden" name="page" value="0" />
 
-        <div class="filterbar__row" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
-          
+        <div class="filterbar__row" style="display:flex; gap:15px; align-items:flex-end; flex-wrap:wrap;">
+
           <div class="field">
             <label class="label" for="keyword" style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Keyword</label>
             <input id="keyword" name="keyword" class="input" placeholder="User ID or Name"
-                   th:value="${keyword}" style="width: 200px;" />
+                   th:value="${keyword}" style="width:200px;" />
           </div>
 
           <div class="field">
             <label class="label" for="withdrawn" style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Status</label>
-            <select id="withdrawn" name="withdrawn" class="select" style="width: 150px;">
+            <select id="withdrawn" name="withdrawn" class="select" style="width:150px;">
               <option value="" th:selected="${withdrawn == null}">ALL</option>
               <option value="false" th:selected="${withdrawn != null and !withdrawn}">ACTIVE</option>
               <option value="true" th:selected="${withdrawn != null and withdrawn}">WITHDRAWN</option>
@@ -38,7 +40,7 @@
 
           <div class="field">
             <label class="label" for="size" style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Size</label>
-            <select id="size" name="size" class="select" style="width: 80px;">
+            <select id="size" name="size" class="select" style="width:80px;">
               <option th:selected="${size==20}" th:value="20">20</option>
               <option th:selected="${size==50}" th:value="50">50</option>
               <option th:selected="${size==100}" th:value="100">100</option>
@@ -56,52 +58,64 @@
         <table class="table">
           <thead>
           <tr>
-            <th width="15%">User ID</th>
+            <th width="10%">User ID</th>
             <th>Name</th>
             <th>Email (Masked)</th>
             <th>Phone (Masked)</th>
             <th>Joined At</th>
-            <th width="10%" style="text-align: center;">Status</th>
+            <th width="12%" style="text-align:center;">Status</th>
+            <th width="12%" style="text-align:center;">Action</th>
           </tr>
           </thead>
 
           <tbody>
           <tr th:if="${#lists.isEmpty(users)}">
-            <td colspan="6" class="td-muted" style="text-align: center; padding: 40px;">데이터가 없습니다.</td>
+            <td colspan="7" class="td-muted" style="text-align:center; padding:40px;">데이터가 없습니다.</td>
           </tr>
 
           <tr th:each="u : ${users}">
             <td th:text="${u.usersId()}">-</td>
-            <td style="font-weight: bold; color: #222;" th:text="${u.name()}">-</td>
+            <td style="font-weight:bold; color:#222;" th:text="${u.name()}">-</td>
             <td th:text="${u.emailMasked()}">-</td>
             <td th:text="${u.phoneMasked()}">-</td>
             <td th:text="${u.joinedAt()}">-</td>
-            <td style="text-align: center;">
-              <span class="chip" 
-                    style="padding: 4px 8px; font-size: 11px;"
+
+            <td style="text-align:center;">
+              <span class="chip"
+                    style="padding:4px 8px; font-size:11px;"
                     th:styleappend="${u.withdrawn()} ? 'background:#ffebee; color:#d32f2f;' : 'background:#e8f5e9; color:#2e7d32;'"
                     th:text="${u.withdrawn()} ? 'WITHDRAWN' : 'ACTIVE'">ACTIVE</span>
+            </td>
+
+            <!-- 청구서 조회 화면 구현할 때 바로 연결 -->
+            <td style="text-align:center;">
+              <a class="btn"
+                 style="background:#fff; border:1px solid #ddd; color:#333;"
+                 th:href="@{/invoices(users_id=${u.usersId()}, billing_yyyymm=${billing_yyyymm})}">
+                Invoices
+              </a>
             </td>
           </tr>
           </tbody>
         </table>
       </div>
 
-      <div class="pager" style="margin-top: 20px; display: flex; justify-content: space-between; align-items: center;">
-        <div class="pager__left" style="font-size: 13px; color: #666;">
-          Page <strong style="color: #e6007e;" th:text="${page + 1}">1</strong> / <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
+      <div class="pager" style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="pager__left" style="font-size:13px; color:#666;">
+          Page <strong style="color:#e6007e;" th:text="${page + 1}">1</strong> /
+          <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
         </div>
 
-        <div class="pager__right" style="display: flex; gap: 5px;">
+        <div class="pager__right" style="display:flex; gap:5px;">
           <a class="btn"
-             style="background: #fff; border: 1px solid #ddd; color: #333;"
+             style="background:#fff; border:1px solid #ddd; color:#333;"
              th:classappend="${page <= 0} ? ' is-disabled' : ''"
              th:href="@{/users(page=${page-1}, size=${size}, keyword=${keyword}, withdrawn=${withdrawn}, billing_yyyymm=${billing_yyyymm})}">
             Prev
           </a>
 
           <a class="btn"
-             style="background: #fff; border: 1px solid #ddd; color: #333;"
+             style="background:#fff; border:1px solid #ddd; color:#333;"
              th:classappend="${page >= totalPages-1} ? ' is-disabled' : ''"
              th:href="@{/users(page=${page+1}, size=${size}, keyword=${keyword}, withdrawn=${withdrawn}, billing_yyyymm=${billing_yyyymm})}">
             Next

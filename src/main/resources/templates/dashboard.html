@@ -1,42 +1,71 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org"
-      th:replace="layout :: layout(~{::#content})">
+      th:replace="~{layout :: layout(~{::#content})}">
+
 <body>
 
 <section id="content">
   <div class="panel">
-    
+
     <div class="panel__head">
       <h2 class="panel__title">청구 발송 현황 (Overview)</h2>
       <div class="panel__meta">
-        <span class="chip">청구월: 
-          <strong th:text="${billing_yyyymm} ?: '2026-01'">2026-01</strong>
+        <span class="chip">청구월:
+          <strong th:text="${billing_yyyymm} ?: 'ALL'">ALL</strong>
         </span>
       </div>
     </div>
 
     <div class="panel__body">
-      
+
       <div class="grid">
         <div class="card">
           <div class="card__label">총 청구 건수</div>
-          <div class="card__value" th:text="${totalCount} ?: '0'">0</div>
+          <div class="card__value" th:text="${totalCount} ?: 0">0</div>
         </div>
         <div class="card">
           <div class="card__label">발송 성공</div>
-          <div class="card__value" th:text="${successCount} ?: '0'">0</div>
+          <div class="card__value" th:text="${successCount} ?: 0">0</div>
         </div>
         <div class="card">
           <div class="card__label">발송 실패</div>
-          <div class="card__value" style="color: #666;" th:text="${failCount} ?: '0'">0</div>
+          <div class="card__value" style="color:#666;" th:text="${failCount} ?: 0">0</div>
         </div>
       </div>
 
-      <div class="empty" th:if="${totalCount == null or totalCount == 0}">
-        <div class="empty__title">데이터가 없습니다</div>
-        <div class="empty__desc">배치 작업이 시작되면 이곳에 현황이 표시됩니다.</div>
-        <br>
-        <button type="button" class="btn btn--primary">배치 수동 실행</button>
+      <!-- delivery_summary 붙이면 바로 출력될 섹션 -->
+      <div style="margin-top:20px;">
+        <h3 style="margin:0 0 10px 0; font-size:15px; color:#222;">Delivery Summary</h3>
+
+        <div class="table-wrap" th:if="${deliverySummaries != null and !#lists.isEmpty(deliverySummaries)}">
+          <table class="table">
+            <thead>
+            <tr>
+              <th>Billing YYYYMM</th>
+              <th>Channel</th>
+              <th>Total</th>
+              <th>Success</th>
+              <th>Fail</th>
+              <th>Success Rate(%)</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${deliverySummaries}">
+              <td th:text="${s.billingYyyymm}">202601</td>
+              <td th:text="${s.deliveryChannel}">EMAIL</td>
+              <td th:text="${s.totalAttemptCount}">0</td>
+              <td th:text="${s.successCount}">0</td>
+              <td th:text="${s.failCount}">0</td>
+              <td th:text="${s.successRate}">0.00</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="empty" th:if="${deliverySummaries == null or #lists.isEmpty(deliverySummaries)}">
+          <div class="empty__title">요약 데이터가 없습니다</div>
+          <div class="empty__desc">현재는 화면만 구성된 상태입니다. (ERD 쿼리 연결 시 여기에 표가 출력됩니다.)</div>
+        </div>
       </div>
 
     </div>
