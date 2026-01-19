@@ -27,6 +27,20 @@ ALTER TABLE `delivery_history`
 ALTER TABLE `monthly_invoice_batch_fail`
   DROP FOREIGN KEY `FK_monthly_invoice_batch_fail_attempt`;
 
+-- =========================
+-- 2.5) (초기 합의) 테스트 데이터 TRUNCATE
+-- FK drop 된 상태라 안전하게 삭제 가능
+-- 자식 -> 부모 순서 권장
+-- =========================
+TRUNCATE TABLE `monthly_invoice_detail`;
+TRUNCATE TABLE `delivery_status`;
+TRUNCATE TABLE `delivery_history`;
+TRUNCATE TABLE `monthly_invoice_batch_fail`;
+
+TRUNCATE TABLE `monthly_invoice_batch_attempt`;
+TRUNCATE TABLE `monthly_invoice`;
+
+TRUNCATE TABLE `delivery_summary`;
 
 -- =========================
 -- 3) PK AUTO_INCREMENT 적용
