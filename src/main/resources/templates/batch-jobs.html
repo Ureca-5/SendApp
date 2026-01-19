@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+  <div class="panel">
+
+    <div class="panel__head">
+      <h2 class="panel__title">배치 실행 로그 (Batch Jobs)</h2>
+      <div class="panel__meta">
+        <span class="chip chip--neutral">Total: <strong th:text="${total}">0</strong></span>
+      </div>
+    </div>
+
+    <div class="panel__body">
+
+      <form class="filterbar" method="get" th:action="@{/batch-jobs}">
+        <input type="hidden" name="page" value="0"/>
+
+        <div class="filterbar__row">
+          <div class="field">
+            <label class="label">YYYYMM</label>
+            <input name="billing_yyyymm" class="input" placeholder="예: 202601"
+                   th:value="${billing_yyyymm}" style="width:140px;" />
+          </div>
+
+          <div class="field">
+            <label class="label">Size</label>
+            <select name="size" class="select" style="width:90px;">
+              <option th:selected="${size==20}"  th:value="20">20</option>
+              <option th:selected="${size==50}"  th:value="50">50</option>
+              <option th:selected="${size==100}" th:value="100">100</option>
+              <option th:selected="${size==200}" th:value="200">200</option>
+            </select>
+          </div>
+
+          <div class="field field--actions">
+            <button class="btn btn--primary" type="submit">Search</button>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+          <tr>
+            <th width="10%">Attempt</th>
+            <th width="10%">Target</th>
+            <th width="10%">Status</th>
+            <th width="10%">Type</th>
+            <th width="16%">Started</th>
+            <th width="16%">Ended</th>
+            <th class="ta-right" width="10%">Duration(ms)</th>
+            <th class="ta-right" width="8%">OK</th>
+            <th class="ta-right" width="8%">Fail</th>
+            <th>Host</th>
+          </tr>
+          </thead>
+
+          <tbody>
+          <tr th:if="${#lists.isEmpty(attemptRows)}">
+            <td colspan="10" class="td-muted">데이터가 없습니다.</td>
+          </tr>
+
+          <tr th:each="a : ${attemptRows}">
+            <td th:text="${a.attemptId()}">-</td>
+            <td th:text="${a.targetYyyymm()}">-</td>
+            <td th:text="${a.executionStatus()}">-</td>
+            <td th:text="${a.executionType()}">-</td>
+            <td th:text="${a.startedAt()}">-</td>
+            <td th:text="${a.endedAt()}">-</td>
+            <td class="ta-right" th:text="${a.durationMs()}">-</td>
+            <td class="ta-right" th:text="${a.successCount()}">-</td>
+            <td class="ta-right" th:text="${a.failCount()}">-</td>
+            <td th:text="${a.hostName()}">-</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div class="pager__left">
+          Page <strong th:text="${page + 1}">1</strong> /
+          <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
+        </div>
+
+        <div class="pager__right" style="display:flex; gap:6px;">
+          <a class="btn btn--ghost"
+             th:classappend="${page <= 0} ? ' is-disabled' : ''"
+             th:href="@{/batch-jobs(page=${page-1}, size=${size}, billing_yyyymm=${billing_yyyymm})}">
+            Prev
+          </a>
+          <a class="btn btn--ghost"
+             th:classappend="${page >= totalPages-1} ? ' is-disabled' : ''"
+             th:href="@{/batch-jobs(page=${page+1}, size=${size}, billing_yyyymm=${billing_yyyymm})}">
+            Next
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

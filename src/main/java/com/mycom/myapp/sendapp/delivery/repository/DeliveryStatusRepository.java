@@ -25,7 +25,9 @@ public class DeliveryStatusRepository {
 	private final JdbcTemplate jdbcTemplate;
     private static final DeliveryStatusRowMapper ROW_MAPPER = new DeliveryStatusRowMapper();
 
-    // ✅ Stash에서 가져온 핵심 로직 (이게 있어야 함!)
+    // ==========================================
+    // 1️⃣ [Loader용] 대량 적재 기능 (왼쪽 코드)
+    // ==========================================
     public void saveAll(List<DeliveryStatus> statusList) {
         String sql = "INSERT INTO delivery_status " +
                      "(invoice_id, status, delivery_channel, retry_count, last_attempt_at, created_at) " +
@@ -51,8 +53,33 @@ public class DeliveryStatusRepository {
             }
         });
     }
+
+    // ==========================================
+    // 2️⃣ [Worker용] 중복 방지 및 상태 선점 (오른쪽 코드)
+    // ==========================================
+    public boolean updateStatusToProcessing(Long id, String channel) {
+        String sql = "UPDATE delivery_status SET status = 'PROCESSING', last_attempt_at = NOW() " +
+                     "WHERE delivery_status_id = ? " +
+                     "AND status IN ('READY', 'FAILED') " +
+                     "AND delivery_channel = ?";
+        
+        int affectedRows = jdbcTemplate.update(sql, id, channel);
+        return affectedRows == 1;
+    }
     
-    // ✅ Stash에서 가져온 업데이트 로직
+    // ==========================================
+    // 3️⃣ [Worker용] 발송 결과 업데이트 (오른쪽 코드)
+    // ==========================================
+    public void updateResult(Long id, DeliveryStatusType status, LocalDateTime lastAttemptAt) {
+        String sql = "UPDATE delivery_status SET status = ?, last_attempt_at = ? " +
+                     "WHERE delivery_status_id = ?";
+        
+        jdbcTemplate.update(sql, status.name(), Timestamp.valueOf(lastAttemptAt), id);
+    }
+
+    // ==========================================
+    // 4️⃣ [기타] 단순 상태 업데이트 (왼쪽 코드 - 필요시 사용)
+    // ==========================================
     public void updateStatus(Long invoiceId, DeliveryStatusType newStatus) {
         String sql = "UPDATE delivery_status " +
                      "SET status = ?, last_attempt_at = ? " +
@@ -66,7 +93,7 @@ public class DeliveryStatusRepository {
     }
     
     /**
-     * 내부 정적 RowMapper 클래스
+     * 내부 정적 RowMapper 클래스 (공통)
      */
     private static final class DeliveryStatusRowMapper implements RowMapper<DeliveryStatus> {
         @Override
