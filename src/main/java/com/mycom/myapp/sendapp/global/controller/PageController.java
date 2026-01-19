@@ -43,8 +43,20 @@ public class PageController {
         model.addAttribute("activeMenu", "dashboard");
         model.addAttribute("billing_yyyymm", billingYyyymm);
         model.addAttribute("filterAction", "/");
+
+        // ✅ Batch 현황 (최근 5건)
+        java.util.List<com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowDTO> recent =
+                batchJobsService.listAttempts(billingYyyymm, 0, 5);
+
+        com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowDTO latest =
+                (recent == null || recent.isEmpty()) ? null : recent.get(0);
+
+        model.addAttribute("batchRecentAttempts", recent);
+        model.addAttribute("batchLatestAttempt", latest);
+
         return "dashboard";
     }
+
 
     @GetMapping("/users")
     public String users(
