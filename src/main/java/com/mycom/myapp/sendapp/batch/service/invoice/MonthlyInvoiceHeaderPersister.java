@@ -12,11 +12,8 @@ public interface MonthlyInvoiceHeaderPersister {
     void batchInsertHeaders(List<MonthlyInvoiceRowDto> headers);
 
     /**
-     * Insert 완료 후, DB에서 usersId 기준 invoiceId를 조회하여 반환
-     *
-     * @param targetYyyymm 정산 년월
-     * @param usersIds     청크 내의 유저 식별자 리스트
-     * @return usersId -> invoiceId 맵
+     * (users_id, billing_yyyymm) 기준으로 헤더의 (usersId, invoiceId)를 조회합니다.
+     * - 반환 DTO에는 최소 usersId, invoiceId가 채워진다고 가정합니다.
      */
-    Map<Long, Long> findInvoiceIdsByUsers(Integer targetYyyymm, List<Long> usersIds);
+    List<MonthlyInvoiceRowDto> findIdsByUsersIdsAndYyyymm(List<Long> usersIds, Integer billingYyyymm);
 }

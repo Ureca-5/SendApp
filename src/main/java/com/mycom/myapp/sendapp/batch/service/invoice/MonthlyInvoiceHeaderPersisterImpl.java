@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * Repository 호출
@@ -23,7 +22,13 @@ public class MonthlyInvoiceHeaderPersisterImpl implements MonthlyInvoiceHeaderPe
     }
 
     @Override
-    public Map<Long, Long> findInvoiceIdsByUsers(Integer targetYyyymm, List<Long> usersIds) {
-        return monthlyInvoiceRepository.findInvoiceIdsByUsers(targetYyyymm, usersIds);
+    public List<MonthlyInvoiceRowDto> findIdsByUsersIdsAndYyyymm(List<Long> usersIds, Integer billingYyyymm) {
+        if (usersIds == null || usersIds.isEmpty()) {
+            return List.of();
+        }
+        if (billingYyyymm == null) {
+            throw new IllegalArgumentException("billingYyyymm is required.");
+        }
+        return monthlyInvoiceRepository.findIdsByUsersIdsAndYyyymm(usersIds, billingYyyymm);
     }
 }
