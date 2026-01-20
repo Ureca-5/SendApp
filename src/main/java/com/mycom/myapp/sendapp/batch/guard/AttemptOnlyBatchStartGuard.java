@@ -27,9 +27,6 @@ import java.time.LocalDateTime;
 public class AttemptOnlyBatchStartGuard implements BatchStartGuard {
     private final JdbcTemplate jdbcTemplate;
 
-    @Value("#{jobParameters['targetYyyymm']}")
-    private Integer targetYyyymm;
-
     private static final String TARGET_COUNT_SQL = """
         SELECT COUNT(*)
         FROM users u
