@@ -59,7 +59,7 @@ public class DeliveryStatusRepository {
     // ==========================================
     public boolean updateStatusToProcessing(Long id, String channel) {
         String sql = "UPDATE delivery_status SET status = 'PROCESSING', last_attempt_at = NOW() " +
-                     "WHERE delivery_status_id = ? " +
+                     "WHERE invoice_id = ? " +
                      "AND status IN ('READY', 'FAILED') " +
                      "AND delivery_channel = ?";
         
@@ -72,7 +72,7 @@ public class DeliveryStatusRepository {
     // ==========================================
     public void updateResult(Long id, DeliveryStatusType status, LocalDateTime lastAttemptAt) {
         String sql = "UPDATE delivery_status SET status = ?, last_attempt_at = ? " +
-                     "WHERE delivery_status_id = ?";
+                     "WHERE invoice_id = ?";
         
         jdbcTemplate.update(sql, status.name(), Timestamp.valueOf(lastAttemptAt), id);
     }

@@ -1,5 +1,7 @@
 package com.mycom.myapp.sendapp.delivery.service;
 
+import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.*;
+
 import java.text.DecimalFormat;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
@@ -13,6 +15,7 @@ import org.springframework.data.redis.connection.stream.ObjectRecord;
 import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +39,10 @@ public class DeliveryLoaderService {
     private final DeliveryStatusRepository deliveryStatusRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final DeliveryUserRepository deliveryUserRepository;
+    private final StringRedisTemplate stringRedisTemplate;
 
-    // Redis 키 상수
-    private static final String WAITING_QUEUE_KEY = "billing:delivery:waiting";
+    // Redis 키 상수 -> 상수 클래스 사용
+//    private static final String WAITING_QUEUE_KEY = "billing:delivery:waiting";
 
     /**
      * ✅ 메인 로직
@@ -85,21 +89,25 @@ public class DeliveryLoaderService {
                     log.warn("🚨 회원 정보 없음 (Skip) - InvoiceId: {}", item.getInvoiceId());
                     continue; 
                 }
-
+                
+                // ==================================================//
+                // objectRecord 사용 시 직렬화 문제 발생함.
                 // Redis 전송용 DTO 변환
                 DeliveryRequestDto redisDto = convertToRedisDto(item, user);
 
                 // 레코드 생성
                 ObjectRecord<String, DeliveryRequestDto> record = StreamRecords.newRecord()
                         .ofObject(redisDto)
-                        .withStreamKey(WAITING_QUEUE_KEY);
-
-                redisTemplate.opsForStream().add(record);
+                        .withStreamKey(WAITING_STREAM);
+                
+                // =====================================================//
+                
+                stringRedisTemplate.opsForStream().add(record);
             }
             return null;
         });
         
-        log.info("✅ Redis Stream 적재 완료 (Key: {}): {}건", WAITING_QUEUE_KEY, items.size());
+        log.info("✅ Redis Stream 적재 완료 (Key: {}): {}건", WAITING_STREAM, items.size());
     }
 
     // ────────────────────────────────────────────────────────────────

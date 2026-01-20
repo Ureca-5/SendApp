@@ -1,5 +1,7 @@
 package com.mycom.myapp.sendapp.delivery.service;
 
+import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.*;
+
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryHistory;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryChannelType;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryResultType;
@@ -9,7 +11,6 @@ import com.mycom.myapp.sendapp.delivery.repository.DeliveryStatusRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.stream.StreamListener;
@@ -30,94 +31,112 @@ public class DeliveryWorker implements StreamListener<String, MapRecord<String, 
     public void onMessage(MapRecord<String, String, String> record) {
         Map<String, String> body = record.getValue();
         
-        // Redis JSON 데이터에서 필요한 정보 추출
-        Long statusId = Long.valueOf(body.get("delivery_status_id"));
+        // 발송 상태와 이력 기록시 필요한 정보
         Long invoiceId = Long.valueOf(body.get("invoice_id")); 
         String channelStr = body.get("delivery_channel");
-//        String receiverInfo = body.get("receiver_info");
-        int retryCount = Integer.parseInt(body.get("retry_count")); 
-        int attemptNo = retryCount; 
+        int attemptNo = Integer.parseInt(body.get("retry_count")); 
+        String rawReceiverInfo = body.get("receiver_info"); // 암호화된 상태
         
-        String maskedInfo = maskEmail(body.get("receiver_info")); 
-        log.info(">>> [트리거] 수신자: {}, 채널: {}, 회차: {}", maskedInfo, channelStr, attemptNo);
+//        String maskedInfo = maskEmail(rawReceiverInfo);
+        
+        log.info(">>> [발송정보] 청구서ID: {}, 채널: {}, 회차: {}", invoiceId, channelStr, attemptNo);
 
         try {
            
-            boolean isLead = statusRepository.updateStatusToProcessing(statusId, channelStr);
+            boolean isLead = statusRepository.updateStatusToProcessing(invoiceId, channelStr);
             if (!isLead) {
-                log.info("[중복방지] 이미 처리 중인 건입니다. ID: {}", statusId);
+            	log.info("[중복방지] 이미 처리 중이거나 완료된 건입니다. 청구서ID: {}", invoiceId);
                 acknowledge(record);
                 return;
             }
 
             
-            log.info("발송 중... (Target: {})", channelStr);
+            log.info(">>> 발송 프로세스 시작... (InvoiceID: {})", invoiceId);
             Thread.sleep(1000); 
             
             
+            // 임시 성공 여부( 1% 랜덤 실패 로직 추가)
             boolean isSuccess = true; 
-            
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
-           
-
             
             if (isSuccess) {
-                
-                statusRepository.updateResult(statusId, DeliveryStatusType.SENT, now);
-                
-                DeliveryHistory history = DeliveryHistory.builder()
-                		.deliveryHistoryId(generateTempId())
-                        .invoiceId(invoiceId)
-                        .attemptNo(attemptNo)
-                        .deliveryChannel(DeliveryChannelType.from(channelStr))
-                        .receiverInfo("masking@info.com") 
-                        .status(DeliveryResultType.SUCCESS)
-                        .requestedAt(now) 
-                        .sentAt(now)
-                        .build();
-
-                try {
-                    historyRepository.save(history);
-                    log.info(">>> [성공] 이력 저장 완료. InvoiceID: {}", invoiceId);
-                } catch (DuplicateKeyException e) {
-                    log.warn("[중복] 이미 존재하는 이력입니다. UK 위반.");
-                }
-                
-                
+                handleSuccess(invoiceId, attemptNo, channelStr, rawReceiverInfo, now);
+            } else {
+                handleFailure(invoiceId, attemptNo, channelStr, rawReceiverInfo, now);
             }
-
             
             acknowledge(record);
-
+        
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.error("발송 중단 에러: {}", e.getMessage());
+            log.error(">>> [중단] 프로세스 종료: {}", e.getMessage());
+        
         } catch (Exception e) {
-            log.error("발송 처리 중 치명적 에러: {}", e.getMessage());
+            log.error(">>> [장애] InvoiceID {} 처리 중 에러 (ACK 보류): {}", invoiceId, e.getMessage());
         }
-    }
-    
-    private String maskEmail(String email) {
-        if (email == null || !email.contains("@")) return email;
-        
-        String[] parts = email.split("@");
-        String id = parts[0];
-        String domain = parts[1];
 
-        if (id.length() <= 2) {
-            return id + "***@" + domain;
-        }
+    }
+    
+    private void handleSuccess(Long invoiceId, int attemptNo, String channelStr, String maskedInfo, java.time.LocalDateTime now) {
         
-        return id.substring(0, 2) + "***@" + domain;
+        statusRepository.updateResult(invoiceId, DeliveryStatusType.SENT, now);
+        
+        // 2. 이력 테이블: SUCCESS 기록
+        DeliveryHistory history = createHistory(invoiceId, attemptNo, channelStr, maskedInfo, DeliveryResultType.SUCCESS, now);
+        saveHistorySafely(history);
+        
+        log.info(">>> [결과:성공] DB 업데이트 및 이력 저장 완료. InvoiceID: {}", invoiceId);
     }
-    
-    
-    private static long idCounter = 1;
-    private synchronized long generateTempId() {
-        return idCounter++;
+
+    private void handleFailure(Long invoiceId, int attemptNo, String channelStr, String maskedInfo, java.time.LocalDateTime now) {
+        
+        statusRepository.updateResult(invoiceId, DeliveryStatusType.FAILED, now);
+        
+        // 2. 이력 테이블: FAIL 기록
+        DeliveryHistory history = createHistory(invoiceId, attemptNo, channelStr, maskedInfo, DeliveryResultType.FAIL, now);
+        saveHistorySafely(history);
+        
+        log.warn(">>> [결과:실패] 발송 실패 기록 완료. InvoiceID: {}", invoiceId);
     }
-    
+
+    private DeliveryHistory createHistory(Long invoiceId, int attemptNo, String channel, String info, DeliveryResultType result, java.time.LocalDateTime now) {
+        return DeliveryHistory.builder()
+                .invoiceId(invoiceId)
+                .attemptNo(attemptNo)
+                .deliveryChannel(DeliveryChannelType.from(channel))
+                .receiverInfo(info) 
+                .status(result)
+                .requestedAt(now) 
+                .sentAt(now)
+                .build();
+    }
+
+    private void saveHistorySafely(DeliveryHistory history) {
+        try {
+            historyRepository.save(history);
+        } catch (Exception e) {
+            log.warn(">>> [이력저장실패] 중복 또는 DB 에러: {}", e.getMessage());
+        }
+    }
+
     private void acknowledge(MapRecord<String, String, String> record) {
-        redisTemplate.opsForStream().acknowledge("billing:delivery:waiting", "delivery-group", record.getId());
+        // 하드코딩 제거: 상수를 사용하여 안전하게 ACK
+        redisTemplate.opsForStream().acknowledge(WAITING_STREAM, GROUP_NAME, record.getId());
     }
+    
+//    private String maskEmail(String email) {
+//        if (email == null || !email.contains("@")) return email;
+//        
+//        String[] parts = email.split("@");
+//        String id = parts[0];
+//        String domain = parts[1];
+//
+//        if (id.length() <= 2) {
+//            return id + "***@" + domain;
+//        }
+//        
+//        return id.substring(0, 2) + "***@" + domain;
+//    }
+    
+    
 }

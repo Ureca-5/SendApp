@@ -1,6 +1,8 @@
 package com.mycom.myapp.sendapp.delivery.config;
 
 import com.mycom.myapp.sendapp.delivery.service.DeliveryWorker;
+import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.*;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
@@ -22,9 +24,6 @@ public class RedisStreamConfig {
     private final DeliveryWorker deliveryWorker;
     private final StringRedisTemplate redisTemplate;
     
-    private static final String STREAM_KEY = "billing:delivery:waiting";
-    private static final String GROUP_NAME = "delivery-group";
-    
     // 엔진 역할을 하는 컨테이너 빈 등록
     @Bean(destroyMethod = "stop")
     public StreamMessageListenerContainer<String, MapRecord<String, String, String>> streamMessageListenerContainer(
@@ -45,23 +44,21 @@ public class RedisStreamConfig {
     @Bean
     public Subscription subscription(StreamMessageListenerContainer<String, MapRecord<String, String, String>> container) {
     	
-        // 1. 소비자 그룹 생성 시도
     	try {
-            redisTemplate.opsForStream().createGroup(STREAM_KEY, GROUP_NAME);
+            redisTemplate.opsForStream().createGroup(WAITING_STREAM, ReadOffset.from("0-0"), GROUP_NAME);
         } catch (RedisSystemException e) {
-            log.info("Consumer Group already exists or Stream key not created yet.");
+            log.info(">>> 소비자 그룹이 이미 존재하거나 스트림이 준비되지 않았습니다.");
         }
     	
-        // 2. 소비자 설정 (그룹명, 워커명)
+//    	createGroupIfNotExists(); // 그룹 생성 방어 로직
+    	
     	Consumer consumer = Consumer.from(GROUP_NAME, "worker-1");
+    	StreamOffset<String> offset = StreamOffset.create(WAITING_STREAM, ReadOffset.lastConsumed());
+    	
+    	Subscription subscription = container.receive(consumer, offset, deliveryWorker);
+    	
+    	log.info("Redis Stream Listener 가동 [Stream: {}, Group: {}]", WAITING_STREAM, GROUP_NAME);
         
-        // 3. 읽기 오프셋 설정 (마지막 소비 시점 이후부터)
-        StreamOffset<String> offset = StreamOffset.create(STREAM_KEY, ReadOffset.lastConsumed());
-
-        // 4. 컨테이너에 리스너 연결 및 구독 시작
-        Subscription subscription = container.receive(consumer, offset, deliveryWorker);
-        
-        log.info(">>> Redis Stream Subscription 활성화: {}", STREAM_KEY);
         return subscription;
     }
 }
