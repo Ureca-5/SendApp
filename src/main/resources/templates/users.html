@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::#content})}">
+
+<body>
+
+<section id="content">
+  <div class="panel">
+
+    <div class="panel__head">
+      <h2 class="panel__title">고객 조회 (Users)</h2>
+      <div class="panel__meta">
+        <span class="chip">
+          Total:
+          <strong th:text="${total == -1 ? '-' : total}">-</strong>
+        </span>
+        <span class="chip">Page Size: <strong th:text="${size}">20</strong></span>
+      </div>
+    </div>
+
+    <div class="panel__body">
+
+      <form class="filterbar" method="get" th:action="@{/users}"
+            style="background:#f8f8f8; padding:20px; border-radius:8px; margin-bottom:20px;">
+        <input type="hidden" name="billing_yyyymm" th:value="${billing_yyyymm}" />
+        <input type="hidden" name="page" value="0" />
+        <input type="hidden" name="searched" value="1" /> <!-- ✅ 검색 버튼 눌렀을 때만 조회 -->
+
+        <div class="filterbar__row" style="display:flex; gap:15px; align-items:flex-end; flex-wrap:wrap;">
+
+                <!-- Keyword -->
+      <div class="field" style="min-width:240px;">
+        <label class="label" for="keyword"
+               style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Keyword</label>
+        <input id="keyword" name="keyword" class="input" placeholder="User ID or Name"
+               th:value="${keyword}" style="width:240px;" />
+
+
+      </div>
+
+      <!-- Email -->
+      <div class="field" style="min-width:240px;">
+        <label class="label" for="email"
+               style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Email</label>
+        <input id="email" name="email" class="input" placeholder="email (plain)"
+               th:value="${email}" style="width:240px;" />
+      </div>
+
+      <!-- Phone -->
+      <div class="field" style="min-width:240px;">
+        <label class="label" for="phone"
+               style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Phone</label>
+        <input id="phone" name="phone" class="input" placeholder="phone (plain)"
+               th:value="${phone}" style="width:240px;" />
+      </div>
+
+      <!-- Submit -->
+     
+		  
+          <div class="field">
+            <label class="label" for="withdrawn" style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Status</label>
+            <select id="withdrawn" name="withdrawn" class="select" style="width:160px;">
+              <option value="" th:selected="${withdrawn == null}">ALL</option>
+              <option value="false" th:selected="${withdrawn != null and !withdrawn}">ACTIVE</option>
+              <option value="true" th:selected="${withdrawn != null and withdrawn}">WITHDRAWN</option>
+            </select>
+          </div>
+
+          <div class="field field--actions">
+            <button class="btn btn--primary" type="submit">Search</button>
+          </div>
+                 <div style="font-size:12px; color:#888; margin-top:6px; line-height:1.4;">
+          - 이름 검색 지원 (부분 일치)<br/>
+          - 이름이 기입되어야 번호검색이 됩니다
+        </div>
+        </div>
+      </form>
+
+      <!-- ✅ 검색 전 안내 -->
+      <div th:if="${!searched}"
+           style="padding:30px; border:1px dashed #ddd; border-radius:8px; color:#666; text-align:center;">
+        검색 조건을 입력하고 <strong>Search</strong>를 누르세요. (기본 진입 시 DB 조회 없음)
+      </div>
+
+      <!-- ✅ 검색 후 테이블 -->
+      <div class="table-wrap" th:if="${searched}">
+        <table class="table">
+          <thead>
+          <tr>
+            <th width="10%">User ID</th>
+            <th>Name</th>
+            <th>Email (Plain)</th>
+            <th>Phone (Plain)</th>
+            <th>Joined At</th>
+            <th width="12%" style="text-align:center;">Status</th>
+            <th width="12%" style="text-align:center;">Action</th>
+          </tr>
+          </thead>
+
+          <tbody>
+          <tr th:if="${#lists.isEmpty(users)}">
+            <td colspan="7" class="td-muted" style="text-align:center; padding:40px;">데이터가 없습니다.</td>
+          </tr>
+
+          <tr th:each="u : ${users}">
+            <td th:text="${u.usersId()}">-</td>
+            <td style="font-weight:bold; color:#222;" th:text="${u.name()}">-</td>
+            <td th:text="${u.email()}">-</td>
+            <td th:text="${u.phone()}">-</td>
+            <td th:text="${u.joinedAt()}">-</td>
+
+            <td style="text-align:center;">
+              <span class="chip"
+                    style="padding:4px 8px; font-size:11px;"
+                    th:styleappend="${u.withdrawn()} ? 'background:#ffebee; color:#d32f2f;' : 'background:#e8f5e9; color:#2e7d32;'"
+                    th:text="${u.withdrawn()} ? 'WITHDRAWN' : 'ACTIVE'">ACTIVE</span>
+            </td>
+
+            <td style="text-align:center;">
+              <a class="btn"
+                 style="background:#fff; border:1px solid #ddd; color:#333;"
+                 th:href="@{/invoices(users_id=${u.usersId()}, billing_yyyymm=${billing_yyyymm})}">
+                Invoices
+              </a>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ✅ 페이저 (Prev/Next만 유지: totalPages 제거) -->
+      <div class="pager" th:if="${searched}"
+           style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="pager__left" style="font-size:13px; color:#666;">
+          Page <strong style="color:#e6007e;" th:text="${page + 1}">1</strong>
+          <span th:if="${total != -1}" style="margin-left:10px;">
+            (Total: <span th:text="${total}">0</span>)
+          </span>
+          <span th:if="${total == -1}" style="margin-left:10px;">
+            (Total: -)
+          </span>
+        </div>
+
+        <div class="pager__right" style="display:flex; gap:5px;">
+          <a class="btn"
+             style="background:#fff; border:1px solid #ddd; color:#333;"
+             th:classappend="${page <= 0} ? ' is-disabled' : ''"
+             th:href="@{/users(page=${page-1}, keyword=${keyword}, withdrawn=${withdrawn}, billing_yyyymm=${billing_yyyymm}, searched=1)}">
+            Prev
+          </a>
+
+          <a class="btn"
+             style="background:#fff; border:1px solid #ddd; color:#333;"
+             th:href="@{/users(page=${page+1}, keyword=${keyword}, withdrawn=${withdrawn}, billing_yyyymm=${billing_yyyymm}, searched=1)}">
+            Next
+          </a>
+        </div>
+      </div>
+
+      <div style="margin-top:12px; font-size:12px; color:#888;" th:if="${searched}">
+        ※ 100만 데이터에서 totalPages 계산(count)은 렉 유발이라 제거/제한했습니다. (keyword가 있을 때만 total 계산)
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

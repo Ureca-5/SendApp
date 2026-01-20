@@ -1,0 +1,374 @@
+/* =========================================
+   1. Variables & Reset
+   ========================================= */
+:root {
+  /* LG U+ Color Palette */
+  --bg: #f4f6f8;           /* 전체 배경 (아주 연한 회색) */
+  --panel: #ffffff;        /* 패널/카드 배경 (흰색) */
+  --panel-secondary: #f8f9fa; /* 보조 배경 */
+  
+  --text-main: #222222;    /* 메인 텍스트 */
+  --text-muted: #666666;   /* 보조 텍스트 */
+  
+  --border: #e0e0e0;       /* 테두리 색상 */
+  
+  /* Brand Colors */
+  --accent: #e6007e;       /* U+ Magenta */
+  --accent-hover: #c5006b; /* 호버 시 색상 */
+  --accent-soft: rgba(230, 0, 126, 0.08); /* 연한 배경용 */
+  
+  /* Status Colors */
+  --success: #2e7d32;
+  --success-bg: #e8f5e9;
+  --danger: #d32f2f;
+  --danger-bg: #ffebee;
+  
+  /* Spacing & Sizing */
+  --shadow: 0 1px 3px rgba(0,0,0,0.05);
+  --radius: 8px;
+  --header-height: 60px;
+  --sidebar-width: 240px;
+  
+  --font: 'Malgun Gothic', 'Dotum', -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text-main);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a { text-decoration: none; color: inherit; transition: color 0.2s; }
+ul, li { list-style: none; padding: 0; margin: 0; }
+
+/* =========================================
+   2. Layout Structure (핵심: 고정 사이드바 & 푸터)
+   ========================================= */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+}
+
+/* Sidebar: 화면 왼쪽에 고정 (Sticky) */
+.sidebar {
+  background: #ffffff;
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh; /* 화면 전체 높이 사용 */
+  overflow-y: auto; /* 내용 넘치면 내부 스크롤 */
+  z-index: 100;
+  
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
+}
+
+/* Main Area: Flex로 내용과 푸터 분리 */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-width: 0; /* Grid overflow 방지 */
+}
+
+/* Content: 남은 공간 꽉 채우기 (푸터 밀어내기용) */
+.content {
+  flex: 1;
+  padding: 30px;
+  width: 100%;
+  max-width: 1600px; /* 너무 넓어지는 것 방지 */
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Footer: 항상 바닥에 고정 */
+.footer {
+  margin-top: auto; /* 핵심: 위쪽 공간을 모두 차지하여 바닥으로 이동 */
+  background: #ffffff;
+  border-top: 1px solid var(--border);
+  padding: 15px 30px;
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* =========================================
+   3. Sidebar Components
+   ========================================= */
+.sidebar__brand {
+  padding: 15px;
+  background: var(--accent);
+  border-radius: var(--radius);
+  color: #ffffff;
+  text-align: center;
+}
+
+.brand__title { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.brand__subtitle { font-size: 11px; opacity: 0.8; margin-top: 4px; }
+
+.sidebar__nav { display: flex; flex-direction: column; gap: 5px; }
+
+.nav__item {
+  display: block;
+  padding: 12px 15px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.nav__item:hover {
+  background: var(--panel-secondary);
+  color: var(--text-main);
+}
+
+.nav__item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: bold;
+}
+
+/* =========================================
+   4. Header & Panels
+   ========================================= */
+.header {
+  height: var(--header-height);
+  background: #ffffff;
+  border-bottom: 1px solid var(--border);
+  padding: 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header__title { font-size: 18px; font-weight: bold; margin: 0; }
+.header__user { font-size: 13px; color: var(--text-muted); }
+
+/* Panel (White Box) */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.panel__head {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+}
+
+.panel__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  border-left: 4px solid var(--accent); /* 포인트 라인 */
+  padding-left: 12px;
+}
+
+.panel__body { padding: 25px; }
+
+/* =========================================
+   5. UI Components (Cards, Buttons, Tables)
+   ========================================= */
+
+/* Grid & Cards */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: var(--panel-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  text-align: center;
+}
+
+.card__label { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
+.card__value { font-size: 28px; font-weight: 800; color: var(--accent); }
+
+/* Chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--panel-secondary);
+  color: var(--text-muted);
+}
+/* 상태별 뱃지 컬러 */
+.chip[style*="WITHDRAWN"] { background: var(--danger-bg) !important; color: var(--danger) !important; }
+.chip[style*="ACTIVE"] { background: var(--success-bg) !important; color: var(--success) !important; }
+
+
+/* Inputs & Selects */
+.input, .select {
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input:focus, .select:focus { border-color: var(--accent); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: var(--text-main);
+  transition: all 0.2s;
+}
+.btn:hover { background: #f0f0f0; }
+
+.btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.btn--primary:hover { background: var(--accent-hover); }
+
+.btn.is-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  background: #f4f4f4;
+}
+
+/* Filter Bar */
+.filterbar {
+  background: var(--panel-secondary);
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.filterbar__row {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+.field { display: flex; flex-direction: column; gap: 6px; }
+.label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+
+/* Tables */
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border-top: 1px solid var(--border);
+}
+.table { width: 100%; border-collapse: collapse; min-width: 800px; }
+.table th {
+  background: #fafafa;
+  color: #333;
+  font-weight: bold;
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 2px solid #555; /* 헤더 강조 */
+  font-size: 13px;
+}
+.table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+  color: #555;
+  vertical-align: middle;
+}
+.td-muted { color: #999; text-align: center; padding: 40px !important; }
+
+/* Pagination */
+.pager {
+  margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 15px;
+  border-top: 1px solid var(--border);
+}
+
+/* Empty State */
+.empty {
+  padding: 50px;
+  text-align: center;
+  background: #fafafa;
+  border: 1px dashed #ccc;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+
+/* =========================================
+   6. Responsive
+   ========================================= */
+@media (max-width: 960px) {
+  .app { grid-template-columns: 1fr; } /* 사이드바 상단 이동 */
+  .sidebar {
+    height: auto;
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    overflow-y: visible;
+  }
+  .sidebar__nav { flex-direction: row; overflow-x: auto; }
+  .grid { grid-template-columns: 1fr; }
+  .filterbar__row { flex-direction: column; align-items: stretch; }
+  .field { width: 100%; }
+  .input, .select { width: 100% !important; }
+}
+/* ===== Common utilities (add-on) ===== */
+.panel__meta { display: flex; gap: 8px; align-items: center; }
+
+.ta-right { text-align: right !important; }
+.ta-center { text-align: center !important; }
+
+.btn--ghost {
+  background: #fff;
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+.btn--ghost:hover { background: var(--panel-secondary); }
+
+.chip--success { background: var(--success-bg); color: var(--success); }
+.chip--danger  { background: var(--danger-bg);  color: var(--danger); }
+.chip--neutral { background: var(--panel-secondary); color: var(--text-muted); }
+
+/* make empty tables consistent */
+.table .td-muted { text-align: center; }
