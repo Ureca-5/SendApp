@@ -55,8 +55,8 @@ public class DeliveryWorker implements StreamListener<String, MapRecord<String, 
             Thread.sleep(1000); 
             
             
-            // 임시 성공 여부( 1% 랜덤 실패 로직 추가)
-            boolean isSuccess = true; 
+            // 성공 여부( 1% 랜덤 실패 로직 추가함.)
+            boolean isSuccess = java.util.concurrent.ThreadLocalRandom.current().nextInt(100) != 0;
             java.time.LocalDateTime now = java.time.LocalDateTime.now();
             
             if (isSuccess) {
@@ -79,22 +79,18 @@ public class DeliveryWorker implements StreamListener<String, MapRecord<String, 
     
     private void handleSuccess(Long invoiceId, int attemptNo, String channelStr, String maskedInfo, java.time.LocalDateTime now) {
         
-        statusRepository.updateResult(invoiceId, DeliveryStatusType.SENT, now);
+    	saveHistoryWithStrictCheck(invoiceId, attemptNo, channelStr, maskedInfo, DeliveryResultType.SUCCESS, now);
         
-        // 2. 이력 테이블: SUCCESS 기록
-        DeliveryHistory history = createHistory(invoiceId, attemptNo, channelStr, maskedInfo, DeliveryResultType.SUCCESS, now);
-        saveHistorySafely(history);
+        statusRepository.updateResult(invoiceId, DeliveryStatusType.SENT, now);
         
         log.info(">>> [결과:성공] DB 업데이트 및 이력 저장 완료. InvoiceID: {}", invoiceId);
     }
 
     private void handleFailure(Long invoiceId, int attemptNo, String channelStr, String maskedInfo, java.time.LocalDateTime now) {
         
-        statusRepository.updateResult(invoiceId, DeliveryStatusType.FAILED, now);
+    	saveHistoryWithStrictCheck(invoiceId, attemptNo, channelStr, maskedInfo, DeliveryResultType.FAIL, now);
         
-        // 2. 이력 테이블: FAIL 기록
-        DeliveryHistory history = createHistory(invoiceId, attemptNo, channelStr, maskedInfo, DeliveryResultType.FAIL, now);
-        saveHistorySafely(history);
+        statusRepository.updateResult(invoiceId, DeliveryStatusType.FAILED, now);
         
         log.warn(">>> [결과:실패] 발송 실패 기록 완료. InvoiceID: {}", invoiceId);
     }
@@ -111,11 +107,18 @@ public class DeliveryWorker implements StreamListener<String, MapRecord<String, 
                 .build();
     }
 
-    private void saveHistorySafely(DeliveryHistory history) {
+    private void saveHistoryWithStrictCheck(Long invoiceId, int attemptNo, String channel, String info, DeliveryResultType result, java.time.LocalDateTime now) {
+        DeliveryHistory history = createHistory(invoiceId, attemptNo, channel, info, result, now);
         try {
             historyRepository.save(history);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // [중복 처리] 
+            log.warn("[중복 발송] 이미 동일한 이력이 존재함 (InvoiceID: {}, 회차: {})", invoiceId, attemptNo);
+            // 이미 처리된 건이므로 프로세스를 더 진행하지 않도록 예외 던짐 (상태 업데이트 방지)
+            throw new RuntimeException("이미 처리된 중복 메시지입니다.");
         } catch (Exception e) {
-            log.warn(">>> [이력저장실패] 중복 또는 DB 에러: {}", e.getMessage());
+            log.error("❌ [이력저장실패] DB 치명적 에러: {}", e.getMessage());
+            throw e; 
         }
     }
 
