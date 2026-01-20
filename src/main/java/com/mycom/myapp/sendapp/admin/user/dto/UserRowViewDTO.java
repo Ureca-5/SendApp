@@ -1,13 +1,12 @@
 package com.mycom.myapp.sendapp.admin.user.dto;
 
-import java.sql.Timestamp;
 import java.time.LocalDateTime;
 
 public record UserRowViewDTO(
         long usersId,
         String name,
-        String emailMasked,
-        String phoneMasked,
+        String email,   // 평문
+        String phone,   // 평문
         LocalDateTime joinedAt,
         boolean withdrawn
 ) {}
