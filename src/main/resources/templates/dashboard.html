@@ -32,7 +32,87 @@
           <div class="card__value" style="color:#666;" th:text="${failCount} ?: 0">0</div>
         </div>
       </div>
+		
+		<!-- =========================
+     Batch Status (NEW)
+     ========================= -->
+<div style="margin-top:20px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <h3 style="margin:0 0 10px 0; font-size:15px; color:#222;">Batch Status</h3>
 
+    <a class="btn btn--primary"
+       th:href="@{/batch-jobs(billing_yyyymm=${billing_yyyymm})}">
+      Batch Jobs로 이동
+    </a>
+  </div>
+
+  <!-- Latest summary cards -->
+  <div class="grid" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+    <div class="card">
+      <div class="card__label">최근 실행 상태</div>
+      <div class="card__value" style="font-size:20px;"
+           th:text="${batchLatestAttempt != null ? batchLatestAttempt.executionStatus() : 'N/A'}">N/A</div>
+    </div>
+
+    <div class="card">
+      <div class="card__label">대상 청구월</div>
+      <div class="card__value" style="font-size:20px;"
+           th:text="${batchLatestAttempt != null ? batchLatestAttempt.targetYyyymm() : 'N/A'}">N/A</div>
+    </div>
+
+    <div class="card">
+      <div class="card__label">처리 결과</div>
+      <div class="card__value" style="font-size:16px; color:#222;">
+        <span th:text="${batchLatestAttempt != null ? 'OK ' + batchLatestAttempt.successCount() : 'OK -'}">OK -</span>
+        <span style="margin-left:10px;"
+              th:text="${batchLatestAttempt != null ? 'FAIL ' + batchLatestAttempt.failCount() : 'FAIL -'}">FAIL -</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent attempts table -->
+  <div class="table-wrap" style="margin-top:15px;"
+       th:if="${batchRecentAttempts != null and !#lists.isEmpty(batchRecentAttempts)}">
+    <table class="table">
+      <thead>
+      <tr>
+        <th width="10%">attemptId</th>
+        <th width="10%">targetYyyymm</th>
+        <th width="12%">status</th>
+        <th width="10%">type</th>
+        <th width="16%">started</th>
+        <th width="16%">ended</th>
+        <th width="10%">durationMs</th>
+        <th width="8%">ok</th>
+        <th width="8%">fail</th>
+        <th>host</th>
+      </tr>
+      </thead>
+
+      <tbody>
+      <tr th:each="a : ${batchRecentAttempts}">
+        <td th:text="${a.attemptId()}">-</td>
+        <td th:text="${a.targetYyyymm()}">-</td>
+        <td th:text="${a.executionStatus()}">-</td>
+        <td th:text="${a.executionType()}">-</td>
+        <td th:text="${a.startedAt()}">-</td>
+        <td th:text="${a.endedAt()}">-</td>
+        <td th:text="${a.durationMs()}">-</td>
+        <td th:text="${a.successCount()}">-</td>
+        <td th:text="${a.failCount()}">-</td>
+        <td th:text="${a.hostName()}">-</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="empty"
+       th:if="${batchRecentAttempts == null or #lists.isEmpty(batchRecentAttempts)}">
+    <div class="empty__title">배치 실행 이력이 없습니다</div>
+    <div class="empty__desc">monthly_invoice_batch_attempt 테이블에 데이터가 쌓이면 여기에 최신 5건이 표시됩니다.</div>
+  </div>
+</div>
+		
       <!-- delivery_summary 붙이면 바로 출력될 섹션 -->
       <div style="margin-top:20px;">
         <h3 style="margin:0 0 10px 0; font-size:15px; color:#222;">Delivery Summary</h3>

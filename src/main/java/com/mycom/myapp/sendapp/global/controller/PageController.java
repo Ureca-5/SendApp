@@ -3,6 +3,7 @@ package com.mycom.myapp.sendapp.global.controller;
 import com.mycom.myapp.sendapp.admin.invoice.dto.BillRowViewDTO;
 import com.mycom.myapp.sendapp.admin.invoice.dto.InvoiceDetailRowViewDTO;
 import com.mycom.myapp.sendapp.admin.invoice.service.BillService;
+import com.mycom.myapp.sendapp.admin.user.dto.UserRowViewDTO;
 import com.mycom.myapp.sendapp.admin.user.service.UserService;
 import com.mycom.myapp.sendapp.admin.delivery.service.SendingService;
 import com.mycom.myapp.sendapp.admin.batchjobs.service.BatchJobsService;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Controller
 public class PageController {
@@ -43,37 +45,54 @@ public class PageController {
         model.addAttribute("activeMenu", "dashboard");
         model.addAttribute("billing_yyyymm", billingYyyymm);
         model.addAttribute("filterAction", "/");
+
+        // ✅ Batch 현황 (최근 5건)
+        java.util.List<com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowDTO> recent =
+                batchJobsService.listAttempts(billingYyyymm, 0, 5);
+
+        com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowDTO latest =
+                (recent == null || recent.isEmpty()) ? null : recent.get(0);
+
+        model.addAttribute("batchRecentAttempts", recent);
+        model.addAttribute("batchLatestAttempt", latest);
+
         return "dashboard";
     }
 
+
     @GetMapping("/users")
     public String users(
-            @RequestParam(value = "billing_yyyymm", required = false) Integer billingYyyymm,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "50") int size,
+            Model model,
             @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "email", required = false) String email,
+            @RequestParam(value = "phone", required = false) String phone,
             @RequestParam(value = "withdrawn", required = false) Boolean withdrawn,
-            Model model
+            @RequestParam(value = "page", required = false, defaultValue = "0") Integer page,
+            @RequestParam(value = "billing_yyyymm", required = false) Integer billing_yyyymm,
+            @RequestParam(value = "searched", required = false, defaultValue = "0") Integer searched
     ) {
-        model.addAttribute("pageTitle", "Users");
-        model.addAttribute("activeMenu", "users");
-        model.addAttribute("billing_yyyymm", billingYyyymm);
-        model.addAttribute("filterAction", "/users");
+        int p = (page == null) ? 0 : Math.max(page, 0);
+        boolean isSearched = (searched != null && searched == 1);
 
-        int total = userService.count(keyword, withdrawn);
-        var users = userService.list(keyword, withdrawn, page, size);
-        int totalPages = (int) Math.ceil(total / (double) Math.max(size, 1));
+        List<UserRowViewDTO> users = userService.list(isSearched, keyword, email, phone, withdrawn, p);
+
+        int total = isSearched ? userService.countIfNeeded(keyword, email, phone, withdrawn) : 0;
 
         model.addAttribute("users", users);
-        model.addAttribute("total", total);
-        model.addAttribute("page", page);
-        model.addAttribute("size", size);
-        model.addAttribute("totalPages", totalPages);
         model.addAttribute("keyword", keyword);
+        model.addAttribute("email", email);
+        model.addAttribute("phone", phone);
         model.addAttribute("withdrawn", withdrawn);
+        model.addAttribute("page", p);
+        model.addAttribute("size", UserService.FIXED_SIZE);
+        model.addAttribute("billing_yyyymm", billing_yyyymm);
+
+        model.addAttribute("searched", isSearched);
+        model.addAttribute("total", total);
 
         return "users";
     }
+
 
     // ✅ 청구서 발행 내역
     @GetMapping("/bills")
@@ -207,7 +226,15 @@ public class PageController {
 
     // ---- 호환 redirect (기존 라우트)
     @GetMapping("/invoices")
-    public String invoicesRedirect() { return "redirect:/bills"; }
+    public String invoicesRedirect(
+            @RequestParam(value = "users_id", required = false) Long usersId,
+            @RequestParam(value = "billing_yyyymm", required = false) Integer billingYyyymm
+    ) {
+        UriComponentsBuilder b = UriComponentsBuilder.fromPath("/bills");
+        if (billingYyyymm != null) b.queryParam("billing_yyyymm", billingYyyymm);
+        if (usersId != null) b.queryParam("keyword", usersId); // bills는 keyword(users_id or name) :contentReference[oaicite:9]{index=9}
+        return "redirect:" + b.toUriString();
+    }
 
     @GetMapping("/delivery")
     public String deliveryRedirect() { return "redirect:/sending"; }
