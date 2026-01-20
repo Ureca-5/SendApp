@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Repository
@@ -119,5 +120,45 @@ public class InvoiceSettlementStatusRepositoryImpl implements InvoiceSettlementS
                         .build(),
                 args
         );
+    }
+
+    @Override
+    public int[] batchUpdateStatus(List<Long> invoiceIds,
+                                   SettlementStatus toStatus,
+                                   LocalDateTime lastAttemptAt) {
+        if (invoiceIds == null || invoiceIds.isEmpty()) {
+            return new int[0];
+        }
+        if (toStatus == null || lastAttemptAt == null) {
+            throw new IllegalArgumentException("toStatus and lastAttemptAt are required.");
+        }
+
+        // [정책]
+        // - 이후 상태 변경은 UPDATE로만
+        // - 존재하지 않는 invoice_id면 updateCount=0 → 상위에서 감지(데이터 정합성 문제)
+        final String sql = """
+            UPDATE settlement_status
+               SET status = ?,
+                   last_attempt_at = ?
+             WHERE invoice_id = ?
+            """;
+
+        return jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                // 1) i번째 invoice_id 대상으로 UPDATE 바인딩
+                Long invoiceId = invoiceIds.get(i);
+
+                ps.setString(1, toStatus.name());
+                ps.setTimestamp(2, Timestamp.valueOf(lastAttemptAt));
+                ps.setLong(3, invoiceId);
+            }
+
+            @Override
+            public int getBatchSize() {
+                return invoiceIds.size();
+            }
+        });
     }
 }
