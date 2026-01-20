@@ -7,118 +7,118 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.util.*;
 
+/**
+ * Repository 쿼리 정렬:
+ *  - ORDER BY users_id ASC, billing_yyyymm ASC, device_id ASC
+ *
+ * 위 정렬은 "유저/디바이스 경계"를 잡기엔 충분하지만,
+ * 동일 (users_id, device_id) 내부에서 subscription_start_date 오름차순이 보장되지 않으므로
+ * Calculator가 device buffer를 모은 뒤 buffer 내부만 정렬하여 세그먼트를 계산합니다.
+ */
 @Component
 public class SubscriptionSegmentCalculator {
     /**
-     * 구독 이력 원천 데이터를 기반으로 정산 월의 유효 세그먼트를 계산합니다.
-     *
-     * <p>처리 절차:
-     * 1. 정산 월의 시작/종료일 확정 <br>
-     * 2. 원천 데이터 순회 (동일 기기 단위로 버퍼링) <br>
-     * 3. 기기 변경 시점에 버퍼 내 데이터를 날짜순 정렬 <br>
-     * 4. 정렬된 이력을 순회하며 세그먼트 시작/종료일(연속성 고려) 산출
-     * </p>
+     * chunk 단위 구독 원천 데이터(rows)를 받아 세그먼트 목록을 생성합니다.
+     * rows에는 여러 users_id가 섞여 있을 수 있습니다.
      */
-    public List<SubscriptionSegmentDto> calculate(
-            Long usersId,
-            List<SubscribeBillingHistoryRowDto> rawHistoryRows,
-            Integer targetYyyymm
-    ) {
-        if (rawHistoryRows == null || rawHistoryRows.isEmpty()) {
-            return List.of();
+    public List<SubscriptionSegmentDto> calculate (Integer targetYyyymm, List<SubscribeBillingHistoryRowDto> rows) {
+        List<SubscriptionSegmentDto> segments = new ArrayList<>();
+        if (rows == null || rows.isEmpty()) {
+            return segments;
+        }
+        if (targetYyyymm == null) {
+            throw new IllegalArgumentException("targetYyyymm is required.");
         }
 
-        // 1. 정산월의 시작일/종료일 계산
-        int year  = targetYyyymm / 100;
+        // 정산월 기간
+        int year = targetYyyymm / 100;
         int month = targetYyyymm % 100;
         LocalDate periodStart = LocalDate.of(year, month, 1);
-        LocalDate periodEnd   = periodStart.withDayOfMonth(periodStart.lengthOfMonth());
+        LocalDate periodEnd = periodStart.withDayOfMonth(periodStart.lengthOfMonth());
 
-        List<SubscriptionSegmentDto> resultSegments = new ArrayList<>();
+        Long currentUsersId = null;
+        Long currentDeviceId = null;
 
-        // 한 기기(Device)의 이력을 모아둘 임시 버퍼
-        List<SubscribeBillingHistoryRowDto> deviceBuffer = new ArrayList<>();
+        List<SubscribeBillingHistoryRowDto> buffer = new ArrayList<>();
 
-        for (int i = 0; i < rawHistoryRows.size(); i++) {
-            SubscribeBillingHistoryRowDto currentRow = rawHistoryRows.get(i);
+        for (SubscribeBillingHistoryRowDto row : rows) {
+            Long usersId = row.getUsersId();
+            Long deviceId = row.getDeviceId();
 
-            // 버퍼에 현재 행 추가
-            deviceBuffer.add(currentRow);
-
-            // 다음 행 확인 (마지막 행이거나, 다음 행의 DeviceID가 달라지면 처리 시작)
-            boolean isLastRow = (i == rawHistoryRows.size() - 1);
-            boolean isDeviceChanged = false;
-            if (!isLastRow) {
-                Long nextDeviceId = rawHistoryRows.get(i + 1).getDeviceId();
-                if (!nextDeviceId.equals(currentRow.getDeviceId())) {
-                    isDeviceChanged = true;
-                }
+            // 첫 row
+            if (currentUsersId == null) {
+                currentUsersId = usersId;
+                currentDeviceId = deviceId;
             }
 
-            if (isLastRow || isDeviceChanged) {
-                // [핵심] 한 기기의 데이터를 날짜순으로 정렬
-                deviceBuffer.sort(Comparator.comparing(SubscribeBillingHistoryRowDto::getSubscriptionStartDate));
+            // (users_id, device_id) 경계가 바뀌면 flush
+            if (!currentUsersId.equals(usersId) || !currentDeviceId.equals(deviceId)) {
+                flushBuffer(segments, buffer, periodStart, periodEnd);
+                buffer.clear();
 
-                // 정렬된 데이터를 기반으로 세그먼트 계산
-                processDeviceBuffer(usersId, deviceBuffer, periodStart, periodEnd, resultSegments);
-
-                // 처리가 끝났으므로 버퍼 초기화
-                deviceBuffer.clear();
+                currentUsersId = usersId;
+                currentDeviceId = deviceId;
             }
+
+            buffer.add(row);
         }
 
-        return resultSegments;
+        // 마지막 flush
+        flushBuffer(segments, buffer, periodStart, periodEnd);
+
+        return segments;
     }
 
-    /**
-     * 한 기기(Device)의 정렬된 이력 리스트를 받아 세그먼트를 생성하는 메서드
-     */
-    private void processDeviceBuffer(
-            Long usersId,
-            List<SubscribeBillingHistoryRowDto> sortedRows,
+    private void flushBuffer(
+            List<SubscriptionSegmentDto> out,
+            List<SubscribeBillingHistoryRowDto> buffer,
             LocalDate periodStart,
-            LocalDate periodEnd,
-            List<SubscriptionSegmentDto> resultSegments
+            LocalDate periodEnd
     ) {
-        for (int j = 0; j < sortedRows.size(); j++) {
-            SubscribeBillingHistoryRowDto current = sortedRows.get(j);
+        if (buffer == null || buffer.isEmpty()) {
+            return;
+        }
 
-            LocalDate start = current.getSubscriptionStartDate();
-            // 세그먼트 시작일 = max(월초, 구독시작일)
-            LocalDate segmentStart = start.isBefore(periodStart) ? periodStart : start;
+        // Repository ORDER BY에 subscription_start_date가 없으므로,
+        // 동일 (users_id, device_id) 버퍼만 시작일로 정렬해서 정확도를 보장합니다.
+        buffer.sort(Comparator.comparing(SubscribeBillingHistoryRowDto::getSubscriptionStartDate));
 
-            LocalDate segmentEnd;
+        // 버퍼는 동일 usersId/deviceId여야 합니다.
+        Long usersId = buffer.get(0).getUsersId();
+        Long deviceId = buffer.get(0).getDeviceId();
 
-            // 내 다음 이력이 있는지 확인
-            if (j + 1 < sortedRows.size()) {
-                // 다음 이력의 시작일 하루 전이 나의 종료일
-                LocalDate nextStart = sortedRows.get(j + 1).getSubscriptionStartDate();
-                LocalDate potentialEnd = nextStart.minusDays(1);
+        for (int i = 0; i < buffer.size(); i++) {
+            SubscribeBillingHistoryRowDto cur = buffer.get(i);
 
-                // 단, 그 날짜가 월말을 넘어가면 월말까지만
-                segmentEnd = potentialEnd.isAfter(periodEnd) ? periodEnd : potentialEnd;
+            LocalDate rawStart = cur.getSubscriptionStartDate();
+            LocalDate segStart = rawStart.isBefore(periodStart) ? periodStart : rawStart;
+
+            LocalDate segEnd;
+            if (i + 1 < buffer.size()) {
+                LocalDate nextStartMinus1 = buffer.get(i + 1).getSubscriptionStartDate().minusDays(1);
+                segEnd = nextStartMinus1.isAfter(periodEnd) ? periodEnd : nextStartMinus1;
             } else {
-                // 다음 이력이 없으면(현재 기기의 마지막 이력) 월말까지
-                segmentEnd = periodEnd;
+                segEnd = periodEnd;
             }
 
-            // 유효하지 않은 세그먼트(시작 > 종료)는 스킵 (예: 다음달 시작 건이 미리 들어온 경우 등)
-            if (segmentStart.isAfter(segmentEnd)) {
+            if (segStart.isAfter(segEnd)) {
                 continue;
             }
 
-            resultSegments.add(SubscriptionSegmentDto.builder()
-                    .usersId(usersId)
-                    .deviceId(current.getDeviceId())
-                    .subscribeBillingHistoryId(current.getSubscribeBillingHistoryId())
-                    .subscribeServiceId(current.getSubscribeServiceId())
-                    .serviceName(current.getServiceName())
-                    .segmentStartDate(segmentStart)
-                    .segmentEndDate(segmentEnd)
-                    .originAmount(current.getOriginAmount())
-                    .discountAmount(current.getDiscountAmount())
-                    .totalAmount(current.getTotalAmount())
-                    .build());
+            out.add(
+                    SubscriptionSegmentDto.builder()
+                            .usersId(usersId)
+                            .deviceId(deviceId)
+                            .subscribeBillingHistoryId(cur.getSubscribeBillingHistoryId())
+                            .subscribeServiceId(cur.getSubscribeServiceId())
+                            .serviceName(cur.getServiceName())
+                            .segmentStartDate(segStart)
+                            .segmentEndDate(segEnd)
+                            .originAmount(cur.getOriginAmount())
+                            .discountAmount(cur.getDiscountAmount())
+                            .totalAmount(cur.getTotalAmount())
+                            .build()
+            );
         }
     }
 }
