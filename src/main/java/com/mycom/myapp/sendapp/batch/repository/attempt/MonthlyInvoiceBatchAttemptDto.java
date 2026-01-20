@@ -1,4 +1,4 @@
-package com.mycom.myapp.sendapp.batch.repository;
+package com.mycom.myapp.sendapp.batch.repository.attempt;
 
 import lombok.Builder;
 import lombok.Getter;

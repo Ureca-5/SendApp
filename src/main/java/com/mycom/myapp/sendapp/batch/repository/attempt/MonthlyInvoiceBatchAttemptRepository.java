@@ -1,4 +1,4 @@
-package com.mycom.myapp.sendapp.batch.repository;
+package com.mycom.myapp.sendapp.batch.repository.attempt;
 
 import java.time.LocalDateTime;
 import java.util.Optional;

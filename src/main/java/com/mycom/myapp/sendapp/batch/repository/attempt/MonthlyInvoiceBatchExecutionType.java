@@ -1,4 +1,4 @@
-package com.mycom.myapp.sendapp.batch.repository;
+package com.mycom.myapp.sendapp.batch.repository.attempt;
 
 /**
  * 배치 실행 타입 enum
