@@ -41,4 +41,7 @@ public class MonthlyInvoiceRowDto {
 
     /** 만료 시각 */
     private LocalDate expiredAt;
+
+    /** 정산 성공 여부 **/
+    private Boolean settlementSuccess;
 }
