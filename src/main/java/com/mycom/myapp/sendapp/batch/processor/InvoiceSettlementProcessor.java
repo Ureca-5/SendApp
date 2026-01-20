@@ -29,14 +29,6 @@ public class InvoiceSettlementProcessor implements ItemProcessor<Long, MonthlyIn
     @Value("#{jobParameters['targetYyyymm']}")
     private Integer targetYyyymm;
 
-    /**
-     * Step0(Tasklet)에서 생성한 attemptId를 JobExecutionContext에 저장해두었다는 전제.
-     * - 예: jobExecutionContext.putLong("attemptId", attemptId)
-     * - 필요 없다면 제거하셔도 됩니다.
-     */
-    @Value("#{jobExecutionContext['attemptId']}")
-    private Long attemptId;
-
     @Override
     public MonthlyInvoiceRowDto process(Long usersId) {
         if (usersId == null) {
