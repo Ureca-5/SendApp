@@ -2,11 +2,13 @@ package com.mycom.myapp.sendapp.batch.dto;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
+@Setter
 @Builder
 public class MonthlyInvoiceRowDto {
     /** 식별자 (DB insert 이후 채워질 수 있음) */
