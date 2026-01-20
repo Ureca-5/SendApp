@@ -91,6 +91,33 @@ public class DeliveryStatusRepository {
                 invoiceId
         );
     }
+    //중복키 에러시 에러난 지점 스킵후 나머지 저장하는 코드, 기존 saveAll 사용 안하고 이 함수 사용
+    public void saveAllIgnore(List<DeliveryStatus> statusList) {
+        // ⚠️ MySQL 전용 문법: INSERT IGNORE
+        // 중복된 PK(invoice_id)가 들어오면 에러 없이 무시하고 넘어감
+        String sql = "INSERT IGNORE INTO delivery_status " +
+                     "(invoice_id, status, delivery_channel, retry_count, last_attempt_at, created_at) " +
+                     "VALUES (?, ?, ?, ?, ?, ?)";
+
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                DeliveryStatus status = statusList.get(i);
+                Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+                
+                ps.setLong(1, status.getInvoiceId());
+                ps.setString(2, status.getStatus() != null ? status.getStatus().name() : DeliveryStatusType.READY.name());
+                ps.setString(3, status.getDeliveryChannel().name());
+                ps.setInt(4, 0); 
+                ps.setTimestamp(5, now); 
+                ps.setTimestamp(6, now);
+            }
+            @Override
+            public int getBatchSize() {
+                return statusList.size();
+            }
+        });
+    }
     
     /**
      * 내부 정적 RowMapper 클래스 (공통)
