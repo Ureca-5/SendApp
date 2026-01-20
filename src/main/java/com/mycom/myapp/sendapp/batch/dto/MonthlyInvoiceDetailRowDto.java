@@ -38,10 +38,10 @@ public class MonthlyInvoiceDetailRowDto {
     private Long totalAmount;
 
     /** 사용 시작 시각 */
-    private LocalDateTime usageStartDate;
+    private LocalDate usageStartDate;
 
     /** 사용 종료 시각 */
-    private LocalDateTime usageEndDate;
+    private LocalDate usageEndDate;
 
     /** 생성 시각 */
     private LocalDateTime createdAt;
