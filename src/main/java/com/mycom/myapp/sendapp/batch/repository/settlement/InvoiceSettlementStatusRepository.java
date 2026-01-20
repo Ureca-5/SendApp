@@ -13,7 +13,7 @@ public interface InvoiceSettlementStatusRepository {
      *
      * @return 실제 insert 처리 건수 합(성공한 row 수)
      */
-    int batchInsert(List<SettlementStatusRowDto> rows);
+    int[] batchInsert(List<SettlementStatusRowDto> rows);
 
     /**
      * 재정산/보정 시나리오 등을 위해 단건 조회가 필요하면 사용합니다.

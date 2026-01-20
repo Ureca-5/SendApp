@@ -11,5 +11,5 @@ public interface InvoiceSettlementFailureRepository {
      * @param rows fail row list (failId는 null)
      * @return 총 반영(삽입)된 row 수
      */
-    int batchInsert(List<MonthlyInvoiceBatchFailRowDto> rows);
+    int[] batchInsert(List<MonthlyInvoiceBatchFailRowDto> rows);
 }
