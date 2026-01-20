@@ -36,15 +36,16 @@ public class SubscribeBillingHistoryRepositoryImpl implements SubscribeBillingHi
                   total_amount,
                   billing_yyyymm
             FROM subscribe_billing_history
-            WHERE billing_yyyymm = ?
-              AND users_id IN (%s)
+            WHERE users_id IN (%s)
+              AND billing_yyyymm = ?
+            ORDER BY users_id ASC, billing_yyyymm ASC, device_id ASC
             """, inClause);
 
         Object[] args = new Object[1 + usersIds.size()];
-        args[0] = targetYyyymm;
         for (int i = 0; i < usersIds.size(); i++) {
-            args[i + 1] = usersIds.get(i);
+            args[i] = usersIds.get(i);
         }
+        args[usersIds.size()] = targetYyyymm;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> SubscribeBillingHistoryRowDto.builder()
                 .subscribeBillingHistoryId(rs.getLong("subscribe_billing_history_id"))
