@@ -1,4 +1,4 @@
-package com.mycom.myapp.sendapp.batch.service;
+package com.mycom.myapp.sendapp.batch.service.invoice;
 
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
 import com.mycom.myapp.sendapp.batch.repository.invoice.MonthlyInvoiceRepository;
