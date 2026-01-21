@@ -63,7 +63,7 @@ public class DeliveryProcessor {
             }
             
             // 4. 발송 모킹 (1초 지연 및 1% 실패 확률)
-//            Thread.sleep(1000);
+            Thread.sleep(1000);
             boolean isSuccess = ThreadLocalRandom.current().nextInt(100) != 0;
 
             if (isSuccess) {
