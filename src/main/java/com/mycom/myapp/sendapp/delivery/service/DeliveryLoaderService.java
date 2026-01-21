@@ -74,10 +74,10 @@ public class DeliveryLoaderService {
         // 4. [DB 중복 방지] try-catch로 감싸서 한 건의 중복으로 전체 배치가 죽는 것을 방지
         try {
             deliveryStatusRepository.saveAllIgnore(statusList);
-            log.info("✅ DB(delivery_status) 저장 완료: {}건", items.size());
+            log.info("DB(delivery_status) 저장 완료: {}건", items.size());
         } catch (Exception e) {
             // DuplicateKeyException 등을 잡아서 로그만 남기고 진행 (혹은 개별 Insert 로직으로 Fallback)
-            log.warn("⚠️ DB 저장 중 중복 데이터 존재 가능성 있음 (무시하고 진행): {}", e.getMessage());
+            log.warn("DB 저장 중 중복 데이터 존재 가능성 있음 (무시하고 진행): {}", e.getMessage());
         }
 
 
@@ -99,8 +99,9 @@ public class DeliveryLoaderService {
                 streamMap.put("invoice_id", String.valueOf(item.getInvoiceId()));
                 streamMap.put("delivery_channel", "EMAIL");
                 streamMap.put("retry_count", "0");
-                streamMap.put("receiver_info", user.getEmail()); // Worker가 'receiver_info'로 꺼냄
-
+                streamMap.put("email", user.getEmail()); 
+                streamMap.put("phone", user.getPhone()); 
+                
                 // (B) 실제 발송(이메일 본문)에 필요한 추가 정보들
                 streamMap.put("recipient_name", user.getName());
                 streamMap.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));

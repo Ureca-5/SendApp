@@ -1,17 +1,22 @@
 package com.mycom.myapp.sendapp.delivery.repository;
 
+import com.mycom.myapp.sendapp.delivery.dto.ProcessResult;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryHistory;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryChannelType;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryResultType;
-import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.stereotype.Repository;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Repository;
+import org.springframework.jdbc.core.RowMapper;
+
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Repository
 @RequiredArgsConstructor
@@ -38,7 +43,37 @@ public class DeliveryHistoryRepository {
         );
     }
    
-    
+    // bulk insert를 위한 sql
+    public void saveHistoryBatch(List<ProcessResult> results, LocalDateTime now) {
+        if (results == null || results.isEmpty()) return;
+
+        String sql = """
+            INSERT IGNORE INTO delivery_history 
+            (invoice_id, attempt_no, delivery_channel, status, receiver_info, requested_at, sent_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """;
+
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ProcessResult r = results.get(i);
+                Timestamp timestamp = Timestamp.valueOf(now);
+                
+                ps.setLong(1, r.getInvoiceId());
+                ps.setInt(2, r.getAttemptNo());
+                ps.setString(3, r.getChannel());
+                ps.setString(4, r.getStatus());
+                ps.setString(5, r.getReceiverInfo());
+                ps.setTimestamp(6, timestamp); // 발송 요청 시간
+                ps.setTimestamp(7, timestamp); // 발송 완료 시간 (모킹 완료 시점)
+            }
+
+            @Override
+            public int getBatchSize() {
+                return results.size();
+            }
+        });
+    }
     
     private static final class DeliveryHistoryRowMapper implements RowMapper<DeliveryHistory> {
         @Override

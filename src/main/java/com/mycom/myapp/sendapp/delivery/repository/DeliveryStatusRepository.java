@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import com.mycom.myapp.sendapp.delivery.dto.ProcessResult;
 import com.mycom.myapp.sendapp.delivery.dto.DeliveryRetryDto;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryStatus;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryChannelType;
@@ -78,6 +79,7 @@ public class DeliveryStatusRepository {
         jdbcTemplate.update(sql, status.name(), Timestamp.valueOf(lastAttemptAt), id);
     }
 
+    
     // ==========================================
     // 4️⃣ [기타] 단순 상태 업데이트
     // ==========================================
@@ -119,6 +121,36 @@ public class DeliveryStatusRepository {
         });
     }
     
+    
+    // [WORKER용] 최종 batch update
+    public void updateStatusBatch(List<ProcessResult> results, LocalDateTime chunkNow) {
+        if (results == null || results.isEmpty()) return;
+
+        // WHERE 조건에 채널을 포함하여 정확한 레코드 타겟팅
+        String sql = """
+            UPDATE delivery_status 
+               SET status = ?, 
+                   retry_count = ?, 
+                   last_attempt_at = ?
+             WHERE invoice_id = ?
+        """;
+
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ProcessResult r = results.get(i);
+                
+                ps.setString(1, r.getStatus()); // SENT 또는 FAILED
+                ps.setInt(2, r.getAttemptNo()); 
+                ps.setTimestamp(3, Timestamp.valueOf(chunkNow));
+                ps.setLong(4, r.getInvoiceId());
+            }
+
+            @Override
+            public int getBatchSize() {
+                return results.size();
+            }
+        });
     // ==========================================
     // 5️⃣ [Scheduler용] 재발송 대상 조회 (JOIN 쿼리)
     // ==========================================

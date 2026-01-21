@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>전자 청구서</title>
+    <style>
+        body { font-family: 'Malgun Gothic', sans-serif; line-height: 1.6; color: #333; }
+        .container { width: 600px; margin: 20px auto; border: 1px solid #ddd; padding: 20px; }
+        .header { border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+        .content { margin-bottom: 20px; }
+        .footer { font-size: 12px; color: #777; border-top: 1px solid #eee; padding-top: 10px; }
+        .highlight { color: #007bff; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>📄 전자 청구서 안내</h2>
+        </div>
+        
+        <div class="content">
+            <p>안녕하세요, <span class="highlight" th:text="${resultDto.name}">고객</span>님.</p>
+            <p>귀하의 이번 달 청구 내역을 안내해 드립니다.</p>
+            
+            <ul>
+                <li><strong>청구 번호:</strong> <span th:text="${resultDto.invoiceId}">000000</span></li>
+                <li><strong>발송 채널:</strong> <span th:text="${resultDto.channel}">EMAIL</span></li>
+                <li><strong>이메일:</strong> <span th:text="${resultDto.email}">example@mail.com</span></li>
+                <li><strong>휴대폰:</strong> <span th:text="${resultDto.phone}">010-0000-0000</span></li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p>본 메일은 발신 전용입니다. 문의사항은 고객센터를 이용해 주세요.</p>
+            <p>2026 LG Uplus Corp. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
