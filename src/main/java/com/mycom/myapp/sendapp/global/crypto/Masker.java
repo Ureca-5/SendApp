@@ -21,17 +21,17 @@ public final class Masker {
 
         // 1. 이름이 1글자인 경우 ("*" 처리)
         if (length <= 1) {
-            return "*";
+            return "_";
         }
 
         // 2. 이름이 2글자인 경우 (김철 -> 김*)
         if (length == 2) {
-            return name.charAt(0) + "*";
+            return name.charAt(0) + "_";
         }
 
         // 3. 이름이 3글자 이상인 경우 (홍길동 -> 홍*동, 남궁민수 -> 남**수)
         char[] stars = new char[length - 2];
-        Arrays.fill(stars, '*');
+        Arrays.fill(stars, '_');
         
         return name.charAt(0) + new String(stars) + name.charAt(length - 1);
     }
