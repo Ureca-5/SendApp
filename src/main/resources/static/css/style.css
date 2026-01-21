@@ -6,29 +6,29 @@
   --bg: #f4f6f8;           /* 전체 배경 (아주 연한 회색) */
   --panel: #ffffff;        /* 패널/카드 배경 (흰색) */
   --panel-secondary: #f8f9fa; /* 보조 배경 */
-  
+
   --text-main: #222222;    /* 메인 텍스트 */
   --text-muted: #666666;   /* 보조 텍스트 */
-  
+
   --border: #e0e0e0;       /* 테두리 색상 */
-  
+
   /* Brand Colors */
   --accent: #e6007e;       /* U+ Magenta */
   --accent-hover: #c5006b; /* 호버 시 색상 */
   --accent-soft: rgba(230, 0, 126, 0.08); /* 연한 배경용 */
-  
+
   /* Status Colors */
   --success: #2e7d32;
   --success-bg: #e8f5e9;
   --danger: #d32f2f;
   --danger-bg: #ffebee;
-  
+
   /* Spacing & Sizing */
   --shadow: 0 1px 3px rgba(0,0,0,0.05);
   --radius: 8px;
   --header-height: 60px;
   --sidebar-width: 240px;
-  
+
   --font: 'Malgun Gothic', 'Dotum', -apple-system, sans-serif;
 }
 
@@ -69,7 +69,7 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   height: 100vh; /* 화면 전체 높이 사용 */
   overflow-y: auto; /* 내용 넘치면 내부 스크롤 */
   z-index: 100;
-  
+
   display: flex;
   flex-direction: column;
   padding: 20px;
@@ -222,10 +222,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   background: var(--panel-secondary);
   color: var(--text-muted);
 }
-/* 상태별 뱃지 컬러 */
-.chip[style*="WITHDRAWN"] { background: var(--danger-bg) !important; color: var(--danger) !important; }
-.chip[style*="ACTIVE"] { background: var(--success-bg) !important; color: var(--success) !important; }
-
 
 /* Inputs & Selects */
 .input, .select {
@@ -353,11 +349,17 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   .field { width: 100%; }
   .input, .select { width: 100% !important; }
 }
-/* ===== Common utilities (add-on) ===== */
+
+/* =========================================
+   7. Utilities (Common)
+   ========================================= */
 .panel__meta { display: flex; gap: 8px; align-items: center; }
 
 .ta-right { text-align: right !important; }
 .ta-center { text-align: center !important; }
+
+.break-all { word-break: break-all; }
+.nowrap { white-space: nowrap; }
 
 .btn--ghost {
   background: #fff;
@@ -366,9 +368,376 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 .btn--ghost:hover { background: var(--panel-secondary); }
 
+.btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btn--danger:hover { filter: brightness(0.95); }
+
+.btn--quiet {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.btn--quiet:hover { background: var(--panel-secondary); color: var(--text-main); }
+
 .chip--success { background: var(--success-bg); color: var(--success); }
 .chip--danger  { background: var(--danger-bg);  color: var(--danger); }
 .chip--neutral { background: var(--panel-secondary); color: var(--text-muted); }
 
 /* make empty tables consistent */
 .table .td-muted { text-align: center; }
+
+/* Table column width helpers (운영에서 컬럼폭 고정용) */
+.col-xs { width: 80px; }
+.col-sm { width: 120px; }
+.col-md { width: 180px; }
+.col-lg { width: 260px; }
+
+/* =========================================
+   8. Admin Ops Add-ons (Status/Alerts/Modal/Table UX)
+   ========================================= */
+
+/* ---- 8-1) Status / Channel badges (NO inline-style hacks) ---- */
+.chip--status { font-weight: 800; letter-spacing: -0.2px; }
+.chip--channel { font-weight: 800; }
+
+/* Delivery status */
+.chip--started   { background: #e3f2fd; color: #1565c0; } /* blue */
+.chip--completed { background: var(--success-bg); color: var(--success); }
+.chip--failed    { background: var(--danger-bg);  color: var(--danger); }
+.chip--pending   { background: #fff8e1; color: #f57c00; } /* amber */
+.chip--canceled  { background: #eceff1; color: #455a64; } /* grey */
+
+/* Channels */
+.chip--email { background: #e8eaf6; color: #283593; } /* indigo */
+.chip--sms   { background: #e0f7fa; color: #006064; } /* cyan */
+.chip--push  { background: #f3e5f5; color: #6a1b9a; } /* purple */
+
+/* ---- 8-2) Alerts / Callouts (운영 화면 필수) ---- */
+.alert {
+  border: 1px solid var(--border);
+  border-left: 5px solid #999;
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.alert__title { font-weight: 800; margin: 0 0 4px 0; }
+.alert__desc  { margin: 0; color: var(--text-muted); font-size: 13px; }
+
+.alert--info    { border-left-color: #1565c0; background: #f3f8ff; }
+.alert--warn    { border-left-color: #f57c00; background: #fff8e1; }
+.alert--danger  { border-left-color: var(--danger); background: var(--danger-bg); }
+.alert--success { border-left-color: var(--success); background: var(--success-bg); }
+
+.alert__actions { margin-left: auto; display: inline-flex; gap: 8px; }
+
+/* ---- 8-3) Inline help / hint text ---- */
+.hint { color: var(--text-muted); font-size: 12px; }
+.hint strong { color: var(--text-main); }
+
+/* ---- 8-4) Code / log preview ---- */
+.codeblock {
+  background: #0b1020;
+  color: #e6e6e6;
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.codeblock--light {
+  background: #fafafa;
+  color: #222;
+  border: 1px solid var(--border);
+}
+
+/* ---- 8-5) Modal (재발송/상세보기) ---- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  padding: 20px;
+}
+.modal-backdrop.is-open { display: flex; }
+
+.modal {
+  width: min(880px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  border: 1px solid rgba(0,0,0,0.08);
+  overflow: hidden;
+}
+.modal__head {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal__title { margin: 0; font-size: 16px; font-weight: 900; }
+.modal__body  { padding: 18px; }
+.modal__foot  {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* Close button */
+.btn-icon {
+  width: 34px; height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  cursor: pointer;
+}
+.btn-icon:hover { background: var(--panel-secondary); }
+
+/* ---- 8-6) Table UX improvements ---- */
+.table tr:hover td { background: #fcfcff; } /* subtle */
+.table td .actions { display: inline-flex; gap: 8px; align-items: center; }
+.table td .link {
+  color: var(--accent);
+  font-weight: 700;
+}
+.table td .link:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* sticky header option */
+.table-wrap.is-sticky {
+  max-height: 520px; /* 화면에 맞게 조정 가능 */
+  overflow: auto;
+}
+.table-wrap.is-sticky .table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* row select checkbox alignment */
+.table .td-check {
+  width: 44px;
+  text-align: center;
+}
+.checkbox {
+  width: 16px; height: 16px;
+  accent-color: var(--accent);
+}
+
+/* ---- 8-7) Tabs (sending/batch detail 전환용) ---- */
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 12px;
+}
+.tab {
+  padding: 10px 12px;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-weight: 800;
+  cursor: pointer;
+}
+.tab.is-active {
+  background: #fff;
+  border-color: var(--border);
+  border-bottom-color: #fff;
+  color: var(--text-main);
+}
+.tab:hover { color: var(--text-main); }
+
+/* ---- 8-8) Small KPI row (mini cards) ---- */
+.kpi {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.kpi__item {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 14px 14px;
+}
+.kpi__label { color: var(--text-muted); font-size: 12px; margin-bottom: 6px; }
+.kpi__value { font-size: 18px; font-weight: 900; }
+.kpi__value--accent { color: var(--accent); }
+.kpi__value--danger { color: var(--danger); }
+.kpi__value--success { color: var(--success); }
+
+/* ---- 8-9) Page head helper (제목 + 필터상태) ---- */
+.pagehead {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:12px;
+}
+.pagehead__sub { color: var(--text-muted); font-size: 12px; }
+.pagehead__right {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+/* ---- 8-10) Layout helper: split panels (상단/하단 2열) ---- */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+@media (max-width: 1200px) {
+  .split { grid-template-columns: 1fr; }
+  .kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .kpi { grid-template-columns: 1fr; }
+}
+
+/* =========================================
+   9. Admin Template Fixups (HTML inline 제거용)
+   ========================================= */
+
+/* Sidebar footer */
+.sidebar__footer {
+  margin-top: auto;
+  font-size: 12px;
+  color: #999;
+}
+
+/* Header inner layout */
+.header__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.header__filter {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Disabled nav item */
+.nav__item.is-disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Small buttons */
+.btn--small {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 4px;
+}
+
+/* Pager helpers */
+.pager__left { color: var(--text-muted); font-size: 13px; }
+.pager__right { display: inline-flex; gap: 6px; }
+
+/* Empty state titles/desc */
+.empty__title { font-weight: 800; margin: 0 0 6px 0; }
+.empty__desc { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+/* Generic spacing helpers */
+.mt-8 { margin-top: 8px !important; }
+.mt-12 { margin-top: 12px !important; }
+.mt-14 { margin-top: 14px !important; }
+.mt-20 { margin-top: 20px !important; }
+.mb-14 { margin-bottom: 14px !important; }
+
+/* Width helpers (inline width 제거용) */
+.w-90  { width: 90px !important; }
+.w-120 { width: 120px !important; }
+.w-140 { width: 140px !important; }
+.w-160 { width: 160px !important; }
+.w-180 { width: 180px !important; }
+.w-220 { width: 220px !important; }
+.w-240 { width: 240px !important; }
+
+/* Clickable cards */
+.card.is-clickable { cursor: pointer; }
+.card.is-clickable:hover { filter: brightness(0.99); }
+
+/* KPI grid: 6 columns */
+.grid--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+@media (max-width: 1400px) { .grid--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px)  { .grid--6 { grid-template-columns: 1fr; } }
+
+/* Sections header row */
+.section-head {
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  flex-wrap:wrap;
+  margin: 0 0 10px 0;
+}
+.section-title {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-main);
+  font-weight: 800;
+}
+
+/* Table selection highlight */
+.table tr.is-selected td { background: var(--accent-soft); }
+
+/* Bills list helpers */
+.bills-table td { vertical-align: top; }
+.bill-title { font-weight: 800; color: var(--text-main); }
+.bill-meta { font-size: 12px; color: var(--text-muted); }
+.dot { margin: 0 6px; color: #aaa; }
+.amount-strong { font-weight: 900; }
+.amount-sub { font-size: 12px; color: #777; }
+.stack { display:flex; flex-direction:column; gap:4px; }
+.stack--end { align-items:flex-end; }
+.actions-vert { display:flex; flex-direction:column; gap:6px; }
+
+/* Side detail panel */
+.panel--side { border: 1px solid var(--border); }
+.kv {
+  display:grid;
+  grid-template-columns: 120px 1fr;
+  gap: 6px 10px;
+  font-size: 13px;
+}
+.kv__key { color: var(--text-muted); }
+.kv__val--strong { font-weight: 900; }
+
+/* Cards for table blocks */
+.card--table { text-align: left; }
+.card--ops { text-align: left; }
+.row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
+.row--top { align-items:flex-start; }
+
+/* Preview helpers */
+.preview-wrap { max-width: 980px; margin: 0 auto; }
+.preview-phone { max-width: 520px; margin: 0 auto; }
+
+
+/* Split layout: narrow right panel */
+.split--narrow-right { grid-template-columns: 1fr 420px; }
+@media (max-width: 1100px) { .split--narrow-right { grid-template-columns: 1fr; } }
+
+.user-name { font-weight: 800; color: var(--text-main); }

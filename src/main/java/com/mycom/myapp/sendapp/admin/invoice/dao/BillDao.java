@@ -67,7 +67,7 @@ public class BillDao {
         args.add(offset);
 
         return jdbcTemplate.query(sql.toString(), args.toArray(), (rs, rowNum) -> {
-            long invoiceIdVal  = rs.getLong("invoice_id");
+            long invoiceIdVal = rs.getLong("invoice_id");
             long usersId = rs.getLong("users_id");
             int yyyymm = rs.getInt("billing_yyyymm");
 
@@ -87,7 +87,7 @@ public class BillDao {
             String phoneEnc = rs.getString("phone_enc");
 
             return new BillRowRawDTO(
-            	invoiceIdVal,
+                invoiceIdVal,
                 usersId,
                 yyyymm,
                 planAmount,

@@ -3,14 +3,14 @@ package com.mycom.myapp.sendapp.admin.batchjobs.dto;
 import java.time.LocalDateTime;
 
 public record BatchAttemptRowDTO(
-        long attemptId,
-        int targetYyyymm,
-        String executionStatus,
-        String executionType,
+        Long attemptId,
+        Integer targetYyyymm,
+        String status,
         LocalDateTime startedAt,
-        LocalDateTime endedAt,
-        Long durationMs,
-        long successCount,
-        long failCount,
-        String hostName
+        LocalDateTime finishedAt,
+        Integer targetUserCount,
+        Integer processedUserCount,
+        Integer failCount,
+        String hostName,
+        String errorMessage
 ) {}

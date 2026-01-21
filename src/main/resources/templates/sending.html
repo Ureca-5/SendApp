@@ -15,125 +15,123 @@
 
     <div class="panel__body">
 
-<!-- =========================
-     월별 통계 (Sending Home)
-     ========================= -->
-<div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px;">
-  <div class="card" style="flex:1; min-width:260px;">
-    <div class="card__label">상태별 집계</div>
-    <div class="table-wrap" style="margin-top:8px;" th:if="${statusSummaries != null and !#lists.isEmpty(statusSummaries)}">
-      <table class="table">
-        <thead>
-        <tr><th>Status</th><th class="ta-right">Count</th></tr>
-        </thead>
-        <tbody>
-        <tr th:each="s : ${statusSummaries}">
-          <td th:text="${s.status()}">-</td>
-          <td class="ta-right" th:text="${s.cnt()}">0</td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="empty" style="margin-top:8px;" th:if="${statusSummaries == null or #lists.isEmpty(statusSummaries)}">
-      <div class="empty__desc">billing_yyyymm 기준 집계 데이터가 없습니다.</div>
-    </div>
-  </div>
+      <!-- 월별 통계 -->
+      <div class="split mb-14">
+        <div class="card card--table">
+          <div class="card__label">상태별 집계</div>
+          <div class="table-wrap mt-8" th:if="${statusSummaries != null and !#lists.isEmpty(statusSummaries)}">
+            <table class="table">
+              <thead>
+              <tr><th>Status</th><th class="ta-right">Count</th></tr>
+              </thead>
+              <tbody>
+              <tr th:each="s : ${statusSummaries}">
+                <td th:text="${s.status()}">-</td>
+                <td class="ta-right" th:text="${s.cnt()}">0</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="empty mt-8" th:if="${statusSummaries == null or #lists.isEmpty(statusSummaries)}">
+            <div class="empty__desc">billing_yyyymm 기준 집계 데이터가 없습니다.</div>
+          </div>
+        </div>
 
-  <div class="card" style="flex:1; min-width:320px;">
-    <div class="card__label">채널×상태 집계</div>
-    <div class="table-wrap" style="margin-top:8px;" th:if="${channelStatusSummaries != null and !#lists.isEmpty(channelStatusSummaries)}">
-      <table class="table">
-        <thead>
-        <tr><th>Channel</th><th>Status</th><th class="ta-right">Count</th></tr>
-        </thead>
-        <tbody>
-        <tr th:each="cs : ${channelStatusSummaries}">
-          <td th:text="${cs.channel()}">-</td>
-          <td th:text="${cs.status()}">-</td>
-          <td class="ta-right" th:text="${cs.cnt()}">0</td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="empty" style="margin-top:8px;" th:if="${channelStatusSummaries == null or #lists.isEmpty(channelStatusSummaries)}">
-      <div class="empty__desc">billing_yyyymm 기준 집계 데이터가 없습니다.</div>
-    </div>
-  </div>
-</div>
+        <div class="card card--table">
+          <div class="card__label">채널×상태 집계</div>
+          <div class="table-wrap mt-8" th:if="${channelStatusSummaries != null and !#lists.isEmpty(channelStatusSummaries)}">
+            <table class="table">
+              <thead>
+              <tr><th>Channel</th><th>Status</th><th class="ta-right">Count</th></tr>
+              </thead>
+              <tbody>
+              <tr th:each="cs : ${channelStatusSummaries}">
+                <td th:text="${cs.channel()}">-</td>
+                <td th:text="${cs.status()}">-</td>
+                <td class="ta-right" th:text="${cs.cnt()}">0</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="empty mt-8" th:if="${channelStatusSummaries == null or #lists.isEmpty(channelStatusSummaries)}">
+            <div class="empty__desc">billing_yyyymm 기준 집계 데이터가 없습니다.</div>
+          </div>
+        </div>
+      </div>
 
-<!-- =========================
-     운영: 유저 단건 조회 / 재발송
-     ========================= -->
-<div class="card" style="margin-bottom:14px;">
-  <div class="card__label">운영 도구</div>
-  <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:10px;">
-    <form method="get" th:action="@{/sending/user}" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
-      <div class="field">
-        <label class="label">YYYYMM</label>
-        <input name="billing_yyyymm" class="input" style="width:140px;" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
-      </div>
-      <div class="field">
-        <label class="label">Users ID</label>
-        <input name="users_id" class="input" style="width:140px;" placeholder="예: 10001"/>
-      </div>
-      <div class="field field--actions">
-        <button class="btn btn--primary" type="submit">유저 단건 조회</button>
-      </div>
-    </form>
+      <!-- 운영: 유저 단건 조회 / 재발송 -->
+      <div class="card card--ops mb-14">
+        <div class="card__label">운영 도구</div>
 
-    <form method="get" th:action="@{/sending/resend-bulk}" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
-      <div class="field">
-        <label class="label">YYYYMM</label>
-        <input name="billing_yyyymm" class="input" style="width:140px;" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
-      </div>
-      <div class="field field--actions">
-        <button class="btn" type="submit" style="background:#fff; border:1px solid #ddd; color:#333;">FAILED 일괄 재전송</button>
-      </div>
-    </form>
-  </div>
-  <div style="margin-top:8px; font-size:12px; color:#666;">
-    실제 메시지 발송이 아니라, 운영 안전을 위해 <strong>FAILED → READY 전환</strong> 요청만 등록하는 방식으로 처리합니다.
-  </div>
-</div>
+        <div class="row mt-12 row--top">
+          <form method="get" th:action="@{/sending/user}" class="row">
+            <div class="field">
+              <label class="label">YYYYMM</label>
+              <input name="billing_yyyymm" class="input w-140" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
+            </div>
+            <div class="field">
+              <label class="label">Users ID</label>
+              <input name="users_id" class="input w-140" placeholder="예: 10001"/>
+            </div>
+            <div class="field field--actions">
+              <button class="btn btn--primary" type="submit">유저 단건 조회</button>
+            </div>
+          </form>
 
+          <form method="get" th:action="@{/sending/resend-bulk}" class="row">
+            <div class="field">
+              <label class="label">YYYYMM</label>
+              <input name="billing_yyyymm" class="input w-140" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
+            </div>
+            <div class="field field--actions">
+              <button class="btn btn--ghost" type="submit">FAILED 일괄 재전송</button>
+            </div>
+          </form>
+        </div>
 
+        <div class="hint mt-12">
+          실제 메시지 발송이 아니라, 운영 안전을 위해 <strong>FAILED → READY 전환</strong> 요청만 등록하는 방식으로 처리합니다.
+        </div>
+      </div>
+
+      <!-- 검색 -->
       <form class="filterbar" method="get" th:action="@{/sending}">
         <input type="hidden" name="page" value="0"/>
 
         <div class="filterbar__row">
           <div class="field">
             <label class="label">YYYYMM</label>
-            <input name="billing_yyyymm" class="input" placeholder="예: 202601"
-                   th:value="${billing_yyyymm}" style="width:140px;" />
+            <input name="billing_yyyymm" class="input w-140" placeholder="예: 202601"
+                   th:value="${billing_yyyymm}" />
           </div>
 
           <div class="field">
             <label class="label">Status</label>
-            <input name="status" class="input" placeholder="READY/SENT/FAILED..."
-                   th:value="${status}" style="width:180px;" />
+            <input name="status" class="input w-180" placeholder="READY/SENT/FAILED..."
+                   th:value="${status}" />
           </div>
 
           <div class="field">
             <label class="label">Channel</label>
-            <input name="channel" class="input" placeholder="EMAIL/SMS..."
-                   th:value="${channel}" style="width:160px;" />
+            <input name="channel" class="input w-160" placeholder="EMAIL/SMS..."
+                   th:value="${channel}" />
           </div>
 
           <div class="field">
             <label class="label">Users ID</label>
-            <input name="users_id" class="input" placeholder="예: 10001"
-                   th:value="${users_id}" style="width:140px;" />
+            <input name="users_id" class="input w-140" placeholder="예: 10001"
+                   th:value="${users_id}" />
           </div>
 
           <div class="field">
             <label class="label">Invoice ID</label>
-            <input name="invoice_id" class="input" placeholder="예: 9000001"
-                   th:value="${invoice_id}" style="width:160px;" />
+            <input name="invoice_id" class="input w-180" placeholder="예: 9000001"
+                   th:value="${invoice_id}" />
           </div>
 
           <div class="field">
             <label class="label">Size</label>
-            <select name="size" class="select" style="width:90px;">
+            <select name="size" class="select w-90">
               <option th:selected="${size==20}"  th:value="20">20</option>
               <option th:selected="${size==50}"  th:value="50">50</option>
               <option th:selected="${size==100}" th:value="100">100</option>
@@ -183,7 +181,7 @@
             <td th:text="${r.createdAt()}">-</td>
             <td class="ta-center">
               <a class="btn btn--ghost"
-                 th:href="@{/sending(billing_yyyymm=${billing_yyyymm}, status=${status}, channel=${channel}, page=${page}, size=${size}, invoice_id=${r.invoiceId()})}">
+                 th:href="@{/sending(billing_yyyymm=${billing_yyyymm}, status=${status}, channel=${channel}, users_id=${users_id}, invoice_id=${r.invoiceId()}, page=${page}, size=${size})}">
                 이력
               </a>
             </td>
@@ -198,15 +196,15 @@
           <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
         </div>
 
-        <div class="pager__right" style="display:flex; gap:6px;">
+        <div class="pager__right">
           <a class="btn btn--ghost"
              th:classappend="${page <= 0} ? ' is-disabled' : ''"
-             th:href="@{/sending(page=${page-1}, size=${size}, billing_yyyymm=${billing_yyyymm}, status=${status}, channel=${channel})}">
+             th:href="@{/sending(page=${page-1}, size=${size}, billing_yyyymm=${billing_yyyymm}, status=${status}, channel=${channel}, users_id=${users_id}, invoice_id=${invoice_id})}">
             Prev
           </a>
           <a class="btn btn--ghost"
              th:classappend="${page >= totalPages-1} ? ' is-disabled' : ''"
-             th:href="@{/sending(page=${page+1}, size=${size}, billing_yyyymm=${billing_yyyymm}, status=${status}, channel=${channel})}">
+             th:href="@{/sending(page=${page+1}, size=${size}, billing_yyyymm=${billing_yyyymm}, status=${status}, channel=${channel}, users_id=${users_id}, invoice_id=${invoice_id})}">
             Next
           </a>
         </div>
@@ -216,7 +214,7 @@
   </div>
 
   <!-- History Panel -->
-  <div class="panel" th:if="${selectedInvoiceId != null}" style="margin-top:20px;">
+  <div class="panel mt-20" th:if="${selectedInvoiceId != null}">
     <div class="panel__head">
       <h2 class="panel__title">
         Delivery History (invoiceId=<span th:text="${selectedInvoiceId}">-</span>)
@@ -224,88 +222,6 @@
     </div>
 
     <div class="panel__body">
-
-<!-- =========================
-     월별 통계 (Sending Home)
-     ========================= -->
-<div style="display:flex; gap:14px; flex-wrap:wrap; margin-bottom:14px;">
-  <div class="card" style="flex:1; min-width:260px;">
-    <div class="card__label">상태별 집계</div>
-    <div class="table-wrap" style="margin-top:8px;" th:if="${statusSummaries != null and !#lists.isEmpty(statusSummaries)}">
-      <table class="table">
-        <thead>
-        <tr><th>Status</th><th class="ta-right">Count</th></tr>
-        </thead>
-        <tbody>
-        <tr th:each="s : ${statusSummaries}">
-          <td th:text="${s.status()}">-</td>
-          <td class="ta-right" th:text="${s.cnt()}">0</td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="empty" style="margin-top:8px;" th:if="${statusSummaries == null or #lists.isEmpty(statusSummaries)}">
-      <div class="empty__desc">billing_yyyymm 기준 집계 데이터가 없습니다.</div>
-    </div>
-  </div>
-
-  <div class="card" style="flex:1; min-width:320px;">
-    <div class="card__label">채널×상태 집계</div>
-    <div class="table-wrap" style="margin-top:8px;" th:if="${channelStatusSummaries != null and !#lists.isEmpty(channelStatusSummaries)}">
-      <table class="table">
-        <thead>
-        <tr><th>Channel</th><th>Status</th><th class="ta-right">Count</th></tr>
-        </thead>
-        <tbody>
-        <tr th:each="cs : ${channelStatusSummaries}">
-          <td th:text="${cs.channel()}">-</td>
-          <td th:text="${cs.status()}">-</td>
-          <td class="ta-right" th:text="${cs.cnt()}">0</td>
-        </tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="empty" style="margin-top:8px;" th:if="${channelStatusSummaries == null or #lists.isEmpty(channelStatusSummaries)}">
-      <div class="empty__desc">billing_yyyymm 기준 집계 데이터가 없습니다.</div>
-    </div>
-  </div>
-</div>
-
-<!-- =========================
-     운영: 유저 단건 조회 / 재발송
-     ========================= -->
-<div class="card" style="margin-bottom:14px;">
-  <div class="card__label">운영 도구</div>
-  <div style="display:flex; gap:14px; flex-wrap:wrap; margin-top:10px;">
-    <form method="get" th:action="@{/sending/user}" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
-      <div class="field">
-        <label class="label">YYYYMM</label>
-        <input name="billing_yyyymm" class="input" style="width:140px;" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
-      </div>
-      <div class="field">
-        <label class="label">Users ID</label>
-        <input name="users_id" class="input" style="width:140px;" placeholder="예: 10001"/>
-      </div>
-      <div class="field field--actions">
-        <button class="btn btn--primary" type="submit">유저 단건 조회</button>
-      </div>
-    </form>
-
-    <form method="get" th:action="@{/sending/resend-bulk}" style="display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap;">
-      <div class="field">
-        <label class="label">YYYYMM</label>
-        <input name="billing_yyyymm" class="input" style="width:140px;" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
-      </div>
-      <div class="field field--actions">
-        <button class="btn" type="submit" style="background:#fff; border:1px solid #ddd; color:#333;">FAILED 일괄 재전송</button>
-      </div>
-    </form>
-  </div>
-  <div style="margin-top:8px; font-size:12px; color:#666;">
-    실제 메시지 발송이 아니라, 운영 안전을 위해 <strong>FAILED → READY 전환</strong> 요청만 등록하는 방식으로 처리합니다.
-  </div>
-</div>
-
       <div class="table-wrap">
         <table class="table">
           <thead>

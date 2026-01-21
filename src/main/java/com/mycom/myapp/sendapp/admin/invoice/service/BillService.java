@@ -11,6 +11,8 @@ import com.mycom.myapp.sendapp.global.crypto.EncryptedString;
 import org.springframework.stereotype.Service;
 
 import java.text.NumberFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
@@ -25,13 +27,56 @@ public class BillService {
     private static final NumberFormat KRW = NumberFormat.getNumberInstance(Locale.KOREA);
     private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    private String monthText(int yyyymm) {
+        int y = yyyymm / 100;
+        int m = yyyymm % 100;
+        return String.format("%04d-%02d", y, m);
+    }
+
+    private String date(LocalDate d) {
+        return d == null ? "-" : d.toString();
+    }
+
+    private String dateTime(LocalDateTime dt) {
+        return dt == null ? "-" : dt.format(DT);
+    }
+
+
     public BillService(BillDao billDao, InvoiceDetailDao invoiceDetailDao, ContactProtector protector) {
         this.billDao = billDao;
         this.invoiceDetailDao = invoiceDetailDao;
         this.protector = protector;
     }
 
-    public long count(Integer billingYyyymm, String keyword, Long invoiceId) {
+    
+    private BillRowViewDTO toView(BillRowRawDTO r) {
+        String monthText = monthText(r.billingYyyymm());
+
+        String nameMasked = protector.maskedName(r.userName());
+        String phoneMasked;
+        try {
+            phoneMasked = protector.maskedPhone(EncryptedString.of(r.phoneEnc()));
+        } catch (Exception e) {
+            phoneMasked = "(decrypt-failed)";
+        }
+
+        return new BillRowViewDTO(
+            r.invoiceId(),
+            r.usersId(),
+            monthText,
+            nameMasked,
+            phoneMasked,
+            money(r.planAmount()),
+            money(r.addonAmount()),
+            money(r.etcAmount()),
+            money(r.discountAmount()),
+            money(r.totalAmount()),
+            date(r.dueDate()),
+            dateTime(r.createdAt())
+        );
+    }
+
+public long count(Integer billingYyyymm, String keyword, Long invoiceId) {
         return billDao.count(billingYyyymm, keyword, invoiceId);
     }
 
@@ -39,33 +84,15 @@ public class BillService {
         int offset = page * size;
         List<BillRowRawDTO> rows = billDao.find(billingYyyymm, keyword, invoiceId, size, offset);
 
-        return rows.stream().map(r -> {
-            String monthText = formatBillingMonth(r.billingYyyymm());
-
-            String nameMasked = protector.maskedName(r.userName());
-            String phoneMasked;
-            try {
-                phoneMasked = protector.maskedPhone(EncryptedString.of(r.phoneEnc()));
-            } catch (Exception e) {
-                phoneMasked = "(decrypt-failed)";
-            }
-
-            return new BillRowViewDTO(
-                r.invoiceId(),
-                r.usersId(),
-                monthText,
-                nameMasked,
-                phoneMasked,
-                money(r.planAmount()),
-                money(r.addonAmount()),
-                money(r.etcAmount()),
-                money(r.discountAmount()),
-                money(r.totalAmount()),
-                r.dueDate() == null ? "-" : r.dueDate().toString(),
-                r.createdAt() == null ? "-" : r.createdAt().format(DT)
-            );
-        }).toList();
+        return rows.stream().map(this::toView).toList();
     }
+
+    public BillRowViewDTO findOne(long invoiceId) {
+        BillRowRawDTO raw = billDao.findOne(invoiceId);
+        if (raw == null) return null;
+        return toView(raw);
+    }
+
 
     public BillRowViewDTO getBill(long invoiceId) {
     BillRowRawDTO r = billDao.findOne(invoiceId);

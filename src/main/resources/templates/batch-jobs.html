@@ -7,110 +7,184 @@
   <div class="panel">
 
     <div class="panel__head">
-      <h2 class="panel__title">배치 실행 로그 (Batch Jobs)</h2>
+      <h2 class="panel__title">Batch Jobs</h2>
       <div class="panel__meta">
-        <span class="chip chip--neutral">Total: <strong th:text="${total}">0</strong></span>
+        <span class="chip">YYYYMM: <strong th:text="${billing_yyyymm} ?: '-'">-</strong></span>
       </div>
     </div>
 
     <div class="panel__body">
 
-<div class="card" style="margin-bottom:14px;">
-  <div class="card__label">운영 메모</div>
-  <div style="margin-top:8px; font-size:12px; color:#666; line-height:1.4;">
-    "중간에 끊기면 어디서부터 재시작"이 가능하려면 <strong>attempt_id</strong> 외에
-    <strong>checkpoint(마지막 처리 users_id / chunk index)</strong> 같은 필드가 배치 실행 테이블(또는 별도 체크포인트 테이블)에 있어야 합니다.
-    이 화면은 <em>현 상태에서는 이력 조회</em>까지만 담당합니다.
-  </div>
-</div>
-
-
-      <form class="filterbar" method="get" th:action="@{/batch-jobs}">
-        <input type="hidden" name="page" value="0"/>
-
+      <!-- 검색 -->
+      <form class="filterbar" method="get" th:action="${filterAction}">
         <div class="filterbar__row">
           <div class="field">
-            <label class="label">YYYYMM</label>
-            <input name="billing_yyyymm" class="input" placeholder="예: 202601"
-                   th:value="${billing_yyyymm}" style="width:140px;" />
-          </div>
-
-          <div class="field">
-            <label class="label">Size</label>
-            <select name="size" class="select" style="width:90px;">
-              <option th:selected="${size==20}"  th:value="20">20</option>
-              <option th:selected="${size==50}"  th:value="50">50</option>
-              <option th:selected="${size==100}" th:value="100">100</option>
-              <option th:selected="${size==200}" th:value="200">200</option>
-            </select>
+            <label class="label">정산월(YYYYMM)</label>
+            <input type="number" name="billing_yyyymm" class="input w-140"
+                   th:value="${billing_yyyymm}" placeholder="202601" />
+            <input type="hidden" name="mock" th:value="${param.mock}" />
           </div>
 
           <div class="field field--actions">
-            <button class="btn btn--primary" type="submit">Search</button>
+            <button class="btn btn--primary" type="submit">조회</button>
           </div>
         </div>
       </form>
 
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-          <tr>
-            <th width="10%">Attempt</th>
-            <th width="10%">Target</th>
-            <th width="10%">Status</th>
-            <th width="10%">Type</th>
-            <th width="16%">Started</th>
-            <th width="16%">Ended</th>
-            <th class="ta-right" width="10%">Duration(ms)</th>
-            <th class="ta-right" width="8%">OK</th>
-            <th class="ta-right" width="8%">Fail</th>
-            <th>Host</th>
-          </tr>
-          </thead>
-
-          <tbody>
-          <tr th:if="${#lists.isEmpty(attemptRows)}">
-            <td colspan="10" class="td-muted">데이터가 없습니다.</td>
-          </tr>
-
-          <tr th:each="a : ${attemptRows}">
-            <td th:text="${a.attemptId()}">-</td>
-            <td th:text="${a.targetYyyymm()}">-</td>
-            <td th:text="${a.executionStatus()}">-</td>
-            <td th:text="${a.executionType()}">-</td>
-            <td th:text="${a.startedAt()}">-</td>
-            <td th:text="${a.endedAt()}">-</td>
-            <td class="ta-right" th:text="${a.durationMs()}">-</td>
-            <td class="ta-right" th:text="${a.successCount()}">-</td>
-            <td class="ta-right" th:text="${a.failCount()}">-</td>
-            <td th:text="${a.hostName()}">-</td>
-          </tr>
-          </tbody>
-        </table>
+      <div th:if="${billing_yyyymm == null}" class="empty">
+        <div class="empty__title">정산월을 입력하세요</div>
+        <div class="empty__desc">정산월(YYYYMM)을 입력하면 상태 통계와 최근 시도를 확인할 수 있습니다.</div>
       </div>
 
-      <div class="pager">
-        <div class="pager__left">
-          Page <strong th:text="${page + 1}">1</strong> /
-          <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
+      <div th:if="${billing_yyyymm != null}">
+
+        <!-- 상태 통계 -->
+        <div class="mt-20">
+          <div class="section-head">
+            <h3 class="section-title">월별 상태 통계</h3>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+              <tr>
+                <th>Status</th>
+                <th class="ta-right">Count</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr th:if="${#lists.isEmpty(statusStats)}">
+                <td colspan="2" class="td-muted">통계 데이터 없음</td>
+              </tr>
+              <tr th:each="s : ${statusStats}">
+                <td th:text="${s.status}">COMPLETED</td>
+                <td class="ta-right" th:text="${s.count}">0</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div class="pager__right" style="display:flex; gap:6px;">
-          <a class="btn btn--ghost"
-             th:classappend="${page <= 0} ? ' is-disabled' : ''"
-             th:href="@{/batch-jobs(page=${page-1}, size=${size}, billing_yyyymm=${billing_yyyymm})}">
-            Prev
-          </a>
-          <a class="btn btn--ghost"
-             th:classappend="${page >= totalPages-1} ? ' is-disabled' : ''"
-             th:href="@{/batch-jobs(page=${page+1}, size=${size}, billing_yyyymm=${billing_yyyymm})}">
-            Next
-          </a>
+        <!-- 최근 시도 -->
+        <div class="mt-20">
+          <div class="section-head">
+            <h3 class="section-title">최근 시도(최신순)</h3>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+              <tr>
+                <th width="8%">attemptId</th>
+                <th width="10%">status</th>
+                <th width="16%">startedAt</th>
+                <th width="16%">finishedAt</th>
+                <th class="ta-right" width="8%">target</th>
+                <th class="ta-right" width="8%">processed</th>
+                <th class="ta-right" width="8%">fail</th>
+                <th width="12%">host</th>
+                <th>error</th>
+                <th width="8%" class="ta-center">detail</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr th:if="${#lists.isEmpty(attemptRows)}">
+                <td colspan="10" class="td-muted">최근 시도 없음</td>
+              </tr>
+              <tr th:each="r : ${attemptRows}">
+                <td th:text="${r.attemptId}">1</td>
+                <td th:text="${r.status}">COMPLETED</td>
+                <td th:text="${r.startedAt}">-</td>
+                <td th:text="${r.finishedAt}">-</td>
+                <td class="ta-right" th:text="${r.targetUserCount}">0</td>
+                <td class="ta-right" th:text="${r.processedUserCount}">0</td>
+                <td class="ta-right" th:text="${r.failCount}">0</td>
+                <td th:text="${r.hostName}">host</td>
+                <td th:text="${r.errorMessage}">-</td>
+                <td class="ta-center">
+                  <a class="btn btn--ghost btn--small"
+                     th:href="@{/batch-jobs(billing_yyyymm=${billing_yyyymm}, attempt_id=${r.attemptId}, mock=${param.mock})}">
+                    보기
+                  </a>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- attempt 상세 -->
+  <div class="panel mt-20" th:if="${attemptDetail != null}">
+    <div class="panel__head">
+      <h2 class="panel__title">Attempt 상세</h2>
+      <div class="panel__meta">
+        <span class="chip">attemptId: <strong th:text="${attemptDetail.attemptId}">-</strong></span>
+        <span class="chip">status: <strong th:text="${attemptDetail.status}">-</strong></span>
+        <span class="chip">host: <strong th:text="${attemptDetail.hostName}">-</strong></span>
+      </div>
+    </div>
+
+    <div class="panel__body">
+      <div class="kv">
+        <div class="kv__key">기간</div>
+        <div>
+          <span th:text="${attemptDetail.startedAt}">-</span> ~ <span th:text="${attemptDetail.finishedAt}">-</span>
+        </div>
+
+        <div class="kv__key">대상/처리/실패</div>
+        <div>
+          <span th:text="${attemptDetail.targetUserCount}">0</span> /
+          <span th:text="${attemptDetail.processedUserCount}">0</span> /
+          <span th:text="${attemptDetail.failCount}">0</span>
+        </div>
+      </div>
+
+      <div class="mt-20">
+        <div class="section-head">
+          <h3 class="section-title">Error</h3>
+        </div>
+        <pre class="codeblock" th:text="${attemptDetail.errorMessage}">-</pre>
+      </div>
+
+      <div class="mt-20">
+        <div class="section-head">
+          <h3 class="section-title">실패 샘플</h3>
+        </div>
+
+        <div class="empty" th:if="${#lists.isEmpty(failureRows)}">
+          <div class="empty__desc">실패 목록은 DB 계약 확정 후 노출됩니다.</div>
+        </div>
+
+        <div class="table-wrap" th:if="${!#lists.isEmpty(failureRows)}">
+          <table class="table">
+            <thead>
+            <tr>
+              <th width="12%">usersId</th>
+              <th width="12%">invoiceId</th>
+              <th width="16%">type</th>
+              <th>message</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="f : ${failureRows}">
+              <td th:text="${f.usersId}">-</td>
+              <td th:text="${f.invoiceId}">-</td>
+              <td th:text="${f.failureType}">-</td>
+              <td th:text="${f.message}">-</td>
+            </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
     </div>
   </div>
+
 </section>
 
 </body>
