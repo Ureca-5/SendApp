@@ -2,6 +2,8 @@ package com.mycom.myapp.sendapp.batch.listener;
 
 import com.mycom.myapp.sendapp.batch.repository.attempt.ChunkSettlementResultDto;
 import com.mycom.myapp.sendapp.batch.repository.attempt.MonthlyInvoiceBatchAttemptRepository;
+import net.ttddyy.dsproxy.QueryCount;
+import net.ttddyy.dsproxy.QueryCountHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
@@ -9,6 +11,7 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobExecutionListener;
 import org.springframework.batch.core.StepExecution;
 import org.springframework.batch.core.listener.ChunkListenerSupport;
+import org.springframework.batch.core.scope.context.ChunkContext;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -31,7 +34,7 @@ public class MonthlyInvoiceAttemptListener extends ChunkListenerSupport implemen
     private final MonthlyInvoiceBatchAttemptRepository attemptRepository;
 
     @Override
-    public void afterChunk(org.springframework.batch.core.scope.context.ChunkContext context) {
+    public void afterChunk(ChunkContext context) {
         StepExecution stepExecution = context.getStepContext().getStepExecution();
         Long attemptId = getAttemptId(stepExecution.getJobExecution());
         if (attemptId == null) {
@@ -51,6 +54,14 @@ public class MonthlyInvoiceAttemptListener extends ChunkListenerSupport implemen
         dto.setFailCount(0L); // 실패 건수 집계가 필요하면 Writer에서 ExecutionContext에 남긴 값을 읽어와 반영
 
         attemptRepository.applyChunkResult(attemptId, dto);
+
+        // 쿼리 카운트 로깅 후 초기화
+        QueryCount qc = QueryCountHolder.get(Thread.currentThread().getName());
+        if (qc != null) {
+            log.info("Chunk query counts: select={} insert={} update={} delete={}",
+                    qc.getSelect(), qc.getInsert(), qc.getUpdate(), qc.getDelete());
+        }
+        QueryCountHolder.clear();
     }
 
     @Override
