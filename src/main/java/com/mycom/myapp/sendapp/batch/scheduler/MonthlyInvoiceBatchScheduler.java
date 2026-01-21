@@ -54,4 +54,26 @@ public class MonthlyInvoiceBatchScheduler {
             log.error("Failed to execute monthly invoice batch", e);
         }
     }
+
+    /**
+     * 테스트 원천 데이터(2025년 10월) 정산 배치 수행 메서드(테스트용)
+     */
+    public void testMonthlyInvoiceBatch() {
+        Integer targetYyyymm = 202510;
+
+        log.info("Scheduled Monthly Invoice Batch Start. targetYyyymm={}", targetYyyymm);
+
+        JobParameters params = new JobParametersBuilder()
+                .addString("targetYyyymm", targetYyyymm.toString())
+                // runId를 넣으면 동일 파라미터로도 재실행 가능
+                .addLong("runId", System.currentTimeMillis())
+                .toJobParameters();
+
+        try {
+            JobExecution execution = jobLauncher.run(monthlyInvoiceSettlementJob, params);
+            log.info("Batch executed with status={}", execution.getStatus());
+        } catch (Exception e) {
+            log.error("Failed to execute monthly invoice batch", e);
+        }
+    }
 }

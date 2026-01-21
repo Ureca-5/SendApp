@@ -1,6 +1,7 @@
 package com.mycom.myapp.sendapp.batch.config;
 
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
+import com.mycom.myapp.sendapp.batch.listener.MonthlyInvoiceAttemptListener;
 import com.mycom.myapp.sendapp.batch.processor.InvoiceSettlementProcessor;
 import com.mycom.myapp.sendapp.batch.tasklet.MonthlyInvoiceAttemptStartTasklet;
 import com.mycom.myapp.sendapp.batch.writer.MonthlyInvoiceWriter;
@@ -27,6 +28,9 @@ public class MonthlyInvoiceBatchJobConfig {
     // Step0
     private final MonthlyInvoiceAttemptStartTasklet monthlyInvoiceAttemptStartTasklet;
 
+    // Listener
+    private final MonthlyInvoiceAttemptListener monthlyInvoiceAttemptListener;
+
     // Step1 components
     // 이미 SettlementTargetUserReaderConfig에서 @Bean으로 제공한 reader를 주입받습니다.
     private final JdbcPagingItemReader<Long> settlementTargetUserIdReader;
@@ -38,6 +42,7 @@ public class MonthlyInvoiceBatchJobConfig {
         return new JobBuilder("monthlyInvoiceSettlementJob", jobRepository)
                 .start(step0AttemptStart())
                 .next(step1SettlementChunk())
+                .listener(monthlyInvoiceAttemptListener)
                 .build();
     }
 
@@ -67,6 +72,7 @@ public class MonthlyInvoiceBatchJobConfig {
                 .reader(settlementTargetUserIdReader)
                 .processor(invoiceSettlementProcessor)
                 .writer(monthlyInvoiceWriter)
+                .listener(monthlyInvoiceAttemptListener)
                 .build();
     }
 }
