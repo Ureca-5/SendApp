@@ -20,7 +20,7 @@ public class BillDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public long count(Integer billingYyyymm, String keyword) {
+    public long count(Integer billingYyyymm, String keyword, Long invoiceId) {
         StringBuilder sql = new StringBuilder("""
             SELECT COUNT(*)
             FROM monthly_invoice mi
@@ -29,13 +29,13 @@ public class BillDao {
         """);
 
         List<Object> args = new ArrayList<>();
-        applyWhere(sql, args, billingYyyymm, keyword);
+        applyWhere(sql, args, billingYyyymm, keyword, invoiceId);
 
         Long result = jdbcTemplate.queryForObject(sql.toString(), args.toArray(), Long.class);
         return result == null ? 0 : result;
     }
 
-    public List<BillRowRawDTO> find(Integer billingYyyymm, String keyword, int size, int offset) {
+    public List<BillRowRawDTO> find(Integer billingYyyymm, String keyword, Long invoiceId, int size, int offset) {
         StringBuilder sql = new StringBuilder("""
             SELECT
               mi.invoice_id,
@@ -60,14 +60,14 @@ public class BillDao {
         """);
 
         List<Object> args = new ArrayList<>();
-        applyWhere(sql, args, billingYyyymm, keyword);
+        applyWhere(sql, args, billingYyyymm, keyword, invoiceId);
 
         sql.append(" ORDER BY mi.invoice_id DESC LIMIT ? OFFSET ? ");
         args.add(size);
         args.add(offset);
 
         return jdbcTemplate.query(sql.toString(), args.toArray(), (rs, rowNum) -> {
-            long invoiceId = rs.getLong("invoice_id");
+            long invoiceIdVal  = rs.getLong("invoice_id");
             long usersId = rs.getLong("users_id");
             int yyyymm = rs.getInt("billing_yyyymm");
 
@@ -87,7 +87,7 @@ public class BillDao {
             String phoneEnc = rs.getString("phone_enc");
 
             return new BillRowRawDTO(
-                invoiceId,
+            	invoiceIdVal,
                 usersId,
                 yyyymm,
                 planAmount,
@@ -103,10 +103,20 @@ public class BillDao {
         });
     }
 
-    private void applyWhere(StringBuilder sql, List<Object> args, Integer billingYyyymm, String keyword) {
+public BillRowRawDTO findOne(long invoiceId) {
+    List<BillRowRawDTO> rows = find(null, null, invoiceId, 1, 0);
+    return rows.isEmpty() ? null : rows.get(0);
+}
+
+private void applyWhere(StringBuilder sql, List<Object> args, Integer billingYyyymm, String keyword, Long invoiceId) {
         if (billingYyyymm != null) {
             sql.append(" AND mi.billing_yyyymm = ? ");
             args.add(billingYyyymm);
+        }
+
+        if (invoiceId != null) {
+            sql.append(" AND mi.invoice_id = ? ");
+            args.add(invoiceId);
         }
 
         if (keyword != null && !keyword.isBlank()) {
