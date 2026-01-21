@@ -1,6 +1,7 @@
 package com.mycom.myapp.sendapp.batch.service.settlement;
 
 import com.mycom.myapp.sendapp.batch.calculator.SubscriptionSegmentCalculator;
+import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceBatchFailRowDto;
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceDetailRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscribeBillingHistoryRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscriptionSegmentDto;
@@ -46,8 +47,9 @@ public class SubscribeSettlementServiceImpl implements SubscribeSettlementServic
             return List.of();
         }
 
+        List<MonthlyInvoiceBatchFailRowDto> failRows = new ArrayList<>();
         // 2) 세그먼트 확정 (정렬된 리스트를 전제로 계산)
-        List<SubscriptionSegmentDto> segments = segmentCalculator.calculate(targetYyyymm, rawRows);
+        List<SubscriptionSegmentDto> segments = new ArrayList<>();
         if (segments == null || segments.isEmpty()) {
             return List.of();
         }

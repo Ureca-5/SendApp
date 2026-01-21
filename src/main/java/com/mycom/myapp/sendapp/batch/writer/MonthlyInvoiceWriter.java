@@ -196,25 +196,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
             return;
         }
 
-        List<SubscriptionSegmentDto> segments;
-        try {
-            segments = subscriptionSegmentCalculator.calculate(targetYyyymm, raw);
-        } catch (Exception e) {
-            // 세그먼트 계산 단계에서 전체 실패는 "구독 카테고리"로 fail 기록(원천 개별 특정이 어렵다면 -1)
-            for (Long usersId : userIds) {
-                MonthlyInvoiceRowDto h = headerByUserId.get(usersId);
-                if (h != null) h.setSettlementSuccess(false);
-            }
-            failRows.add(MonthlyInvoiceBatchFailRowDto.builder()
-                    .attemptId(attemptId)
-                    .errorCode("SUB_SEGMENT_CALC_FAIL")
-                    .errorMessage("temporary") // 임시 통일
-                    .createdAt(now)
-                    .invoiceCategoryId(CATEGORY_PLAN)
-                    .billingHistoryId(-1L)
-                    .build());
-            return;
-        }
+        List<SubscriptionSegmentDto> segments = subscriptionSegmentCalculator.calculate(targetYyyymm, raw, failRows, attemptId, headerByUserId);
 
         // 세그먼트 -> 상세 DTO 변환, SUB_DETAIL_BATCH_SIZE 단위로 끊어서 insert
         List<MonthlyInvoiceDetailRowDto> buffer = new ArrayList<>(Math.min(segments.size(), SUB_DETAIL_BATCH_SIZE));
