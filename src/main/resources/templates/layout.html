@@ -1,75 +1,80 @@
 <!doctype html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org" th:fragment="layout (content)">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(content)">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title th:text="${pageTitle} ?: 'Bill Admin System'">Bill Admin System</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title th:text="${pageTitle} ?: 'BatchOps Admin'">BatchOps Admin</title>
 
-  <!-- Thymeleaf(서버) + 정적(로컬) 모두 대응 -->
-  <link rel="stylesheet" th:href="@{/css/style.css}" href="/css/style.css">
+  <!-- Spring static -->
+  <link rel="stylesheet" th:href="@{/css/style.css}" />
+  <!-- local preview -->
+  <link rel="stylesheet" href="css/style.css" />
 </head>
-<body>
 
+<body>
 <div class="app">
+
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar__brand">
-      <div class="brand__title">Bill Admin</div>
-      <div class="brand__subtitle">LG U+ Billing System</div>
+      <div class="brand__title">BatchOps</div>
+      <div class="brand__subtitle">Billing & Delivery Admin</div>
     </div>
 
     <nav class="sidebar__nav">
-      <a th:href="@{/}" class="nav__item"
-         th:classappend="${activeMenu} == 'dashboard' ? ' is-active' : ''">Dashboard</a>
+      <a th:href="@{/}" href="dashboard.html" class="nav__item"
+         th:classappend="${activeMenu} == 'dashboard' ? ' is-active' : ''">DASHBOARD</a>
 
-      <a th:href="@{/users(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
-         th:classappend="${activeMenu} == 'users' ? ' is-active' : ''">Users</a>
+      <a th:href="@{/users}" href="users.html" class="nav__item"
+         th:classappend="${activeMenu} == 'users' ? ' is-active' : ''">USERS</a>
 
-      <a th:href="@{/bills(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
-         th:classappend="${activeMenu} == 'bills' ? ' is-active' : ''">Bills</a>
+      <a th:href="@{/bills}" href="bills.html" class="nav__item"
+         th:classappend="${activeMenu} == 'bills' ? ' is-active' : ''">BILLS</a>
 
-      <!-- Payments: ERD 납부상태 반영 전까지 보류 (Bills로 흡수) -->
-      <span class="nav__item is-disabled">Payments (보류)</span>
+      <a th:href="@{/sending}" href="sending.html" class="nav__item"
+         th:classappend="${activeMenu} == 'sending' ? ' is-active' : ''">SENDING</a>
 
-      <a th:href="@{/sending(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
-         th:classappend="${activeMenu} == 'sending' ? ' is-active' : ''">Sending</a>
+      <a th:href="@{/batch-jobs}" href="batch-jobs.html" class="nav__item"
+         th:classappend="${activeMenu} == 'batch-jobs' ? ' is-active' : ''">BATCH JOBS</a>
 
-      <a th:href="@{/batch-jobs(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
-         th:classappend="${activeMenu} == 'batch-jobs' ? ' is-active' : ''">Batch Jobs</a>
+      <span class="nav__item is-disabled">PAYMENTS (보류)</span>
     </nav>
 
     <div class="sidebar__footer">
-      Server: v1.0.2
+      UI: v2
     </div>
   </aside>
 
+  <!-- Main -->
   <main class="main">
     <header class="header">
       <div class="header__row">
-        <h1 class="header__title" th:text="${pageTitle} ?: '관리자 시스템'">관리자 시스템</h1>
-
-        <!-- 전역 청구월 필터 -->
-        <form method="get" th:action="${filterAction} ?: '/'" class="header__filter">
-          <label class="label">billing_yyyymm</label>
-          <input name="billing_yyyymm" class="input w-120"
-                 placeholder="예: 202601"
-                 th:value="${billing_yyyymm}">
-          <button type="submit" class="btn btn--ghost">Apply</button>
-        </form>
+        <h1 class="header__title" th:text="${pageTitle} ?: 'BatchOps Admin'">BatchOps Admin</h1>
+        <div class="header__user">
+          <span th:text="${headerUser} ?: 'admin'">admin</span>
+        </div>
       </div>
     </header>
 
-    <div th:replace="${content}"></div>
+    <div class="content" th:replace="${content}"></div>
 
     <footer class="footer">
       <div class="footer__left">
-        &copy; 2026 LG Uplus Corp. All rights reserved.
+        &copy; 2026 LG Uplus Corp.
       </div>
       <div class="footer__right">
-        <a href="#">이용약관</a> | <a href="#">개인정보처리방침</a>
+        BatchOps Admin UI
       </div>
     </footer>
   </main>
+
 </div>
 
+<!-- Spring static -->
+<script defer th:src="@{/js/app.js}"></script>
+<!-- local preview -->
+<script defer src="js/app.js"></script>
 </body>
 </html>
