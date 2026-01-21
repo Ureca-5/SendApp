@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Email Template Preview</title>
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#f5f5f5; padding:20px; }
+    .sheet { max-width: 820px; margin:0 auto; background:#fff; border:1px solid #eee; border-radius:12px; overflow:hidden; }
+    .header { padding:18px 22px; background:#111; color:#fff; }
+    .header h1 { margin:0; font-size:18px; }
+    .content { padding:18px 22px; }
+    .meta { display:flex; gap:10px; flex-wrap:wrap; margin:10px 0 14px; }
+    .pill { font-size:12px; padding:6px 10px; border:1px solid #eee; border-radius:999px; background:#fafafa; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { padding:10px 8px; border-bottom:1px solid #eee; font-size:13px; }
+    th { text-align:left; color:#666; }
+    td.ta-right, th.ta-right { text-align:right; }
+    .total { font-size:16px; font-weight:700; }
+    .footer { padding:14px 22px; font-size:12px; color:#777; background:#fafafa; }
+  </style>
+</head>
+<body>
+
+<div class="sheet">
+  <div class="header">
+    <h1>LG U+ 청구서 (Email Preview)</h1>
+  </div>
+
+  <div class="content">
+    <div class="meta">
+      <div class="pill">Invoice ID: <strong th:text="${bill.invoiceId()}">-</strong></div>
+      <div class="pill">Users ID: <strong th:text="${bill.usersId()}">-</strong></div>
+      <div class="pill">청구월: <strong th:text="${bill.billingMonthText()}">-</strong></div>
+      <div class="pill">납부기한: <strong th:text="${bill.dueDateText()}">-</strong></div>
+    </div>
+
+    <p style="margin:0 0 12px 0; color:#333;">
+      아래는 템플릿 렌더 결과 프리뷰입니다. (발송과 무관)
+    </p>
+
+    <h3 style="margin:16px 0 8px; font-size:14px;">요약</h3>
+    <table>
+      <tbody>
+      <tr><th>요금제(A)</th><td class="ta-right" th:text="${bill.planAmountText()}">-</td></tr>
+      <tr><th>부가서비스(B)</th><td class="ta-right" th:text="${bill.addonAmountText()}">-</td></tr>
+      <tr><th>기타(C)</th><td class="ta-right" th:text="${bill.etcAmountText()}">-</td></tr>
+      <tr><th>할인</th><td class="ta-right" th:text="${bill.discountAmountText()}">-</td></tr>
+      <tr><th class="total">합계</th><td class="ta-right total" th:text="${bill.totalAmountText()}">-</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin:18px 0 8px; font-size:14px;">상세 내역</h3>
+    <table>
+      <thead>
+      <tr>
+        <th width="12%">Category</th>
+        <th>Service</th>
+        <th class="ta-right" width="14%">Origin</th>
+        <th class="ta-right" width="14%">Discount</th>
+        <th class="ta-right" width="14%">Total</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:if="${#lists.isEmpty(details)}">
+        <td colspan="5" style="text-align:center; color:#888;">상세 내역이 없습니다.</td>
+      </tr>
+      <tr th:each="d : ${details}">
+        <td th:text="${d.invoiceCategoryId()}">-</td>
+        <td th:text="${d.serviceName()}">-</td>
+        <td class="ta-right" th:text="${#numbers.formatInteger(d.originAmount(), 0, 'COMMA')} + '원'">-</td>
+        <td class="ta-right" th:text="${#numbers.formatInteger(d.discountAmount(), 0, 'COMMA')} + '원'">-</td>
+        <td class="ta-right" th:text="${#numbers.formatInteger(d.totalAmount(), 0, 'COMMA')} + '원'">-</td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    본 프리뷰는 관리자 검수용이며, 실 발송 결과와 다를 수 있습니다(렌더러가 분리되어 있다면 위험 신호).
+  </div>
+</div>
+
+</body>
+</html>

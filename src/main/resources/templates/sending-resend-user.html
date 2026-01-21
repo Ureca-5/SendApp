@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+  <div class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">단건 재발송 요청 (유저 기준)</h2>
+    </div>
+
+    <div class="panel__body">
+      <div class="empty" style="margin-bottom:14px;">
+        <div class="empty__title">주의</div>
+        <div class="empty__desc">
+          이 기능은 실제 발송이 아니라 <strong>FAILED → READY 전환</strong> 요청만 등록합니다.
+          이후 워커/큐가 READY를 처리하는 구조가 운영상 안전합니다.
+        </div>
+      </div>
+
+      <form method="post" th:action="@{/admin/actions/sending/resend-user}" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <input type="hidden" name="billing_yyyymm" th:value="${billing_yyyymm}"/>
+        <input type="hidden" name="users_id" th:value="${users_id}"/>
+
+        <div class="field">
+          <label class="label">YYYYMM</label>
+          <input class="input" style="width:140px;" th:value="${billing_yyyymm}" disabled/>
+        </div>
+
+        <div class="field">
+          <label class="label">Users ID</label>
+          <input class="input" style="width:140px;" th:value="${users_id}" disabled/>
+        </div>
+
+        <div class="field">
+          <label class="label">FAILED Channel</label>
+          <select name="failed_channel" class="select" style="width:160px;">
+            <option value="">(전체)</option>
+            <option value="EMAIL">EMAIL</option>
+            <option value="SMS">SMS</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">Resend Channel</label>
+          <select name="resend_channel" class="select" style="width:160px;" required>
+            <option value="EMAIL">EMAIL</option>
+            <option value="SMS">SMS</option>
+          </select>
+        </div>
+
+        <div class="field field--actions">
+          <button class="btn btn--primary" type="submit">이 유저 FAILED 건 재전송 요청</button>
+          <a class="btn btn--ghost" th:href="@{/sending/user(billing_yyyymm=${billing_yyyymm}, users_id=${users_id})}">뒤로</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

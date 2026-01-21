@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SMS Template Preview</title>
+  <style>
+    body { font-family: -apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif; background:#f5f5f5; padding:20px; }
+    .phone { max-width:420px; margin:0 auto; background:#111; border-radius:18px; padding:18px; }
+    .screen { background:#fff; border-radius:14px; padding:14px; }
+    .bubble { background:#f1f3f5; border-radius:12px; padding:12px; font-size:14px; line-height:1.45; white-space:pre-wrap; }
+    .meta { font-size:12px; color:#777; margin-bottom:8px; }
+  </style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="screen">
+    <div class="meta">
+      Invoice <strong th:text="${bill.invoiceId()}">-</strong> ·
+      Users <strong th:text="${bill.usersId()}">-</strong> ·
+      <strong th:text="${bill.billingMonthText()}">-</strong>
+    </div>
+
+    <div class="bubble" th:text="${smsText}">
+[LGU+] 2026년 01월 청구서
+합계 0원 / 납부기한 2026-01-25
+상세는 이메일 또는 앱에서 확인하세요.
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

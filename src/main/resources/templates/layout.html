@@ -25,8 +25,8 @@
       <a th:href="@{/bills(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
          th:classappend="${activeMenu} == 'bills' ? ' is-active' : ''">Bills</a>
 
-      <a th:href="@{/payments(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
-         th:classappend="${activeMenu} == 'payments' ? ' is-active' : ''">Payments</a>
+      <!-- Payments: ERD 납부상태 반영 전까지 보류 (Bills로 흡수) -->
+      <span class="nav__item is-disabled" style="opacity:.45; cursor:not-allowed;">Payments (보류)</span>
 
       <a th:href="@{/sending(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
          th:classappend="${activeMenu} == 'sending' ? ' is-active' : ''">Sending</a>

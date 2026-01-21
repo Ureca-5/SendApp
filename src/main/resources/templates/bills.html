@@ -33,6 +33,12 @@
           </div>
 
           <div class="field">
+            <label style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Invoice ID</label>
+            <input name="invoice_id" class="input" placeholder="예: 9000001"
+                   th:value="${invoice_id}" style="width:160px;"/>
+          </div>
+
+          <div class="field">
             <label style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Size</label>
             <select name="size" class="select" style="width:80px;">
               <option th:selected="${size==20}" th:value="20">20</option>
@@ -62,12 +68,13 @@
             <th width="12%" style="text-align:right;">C(기타)</th>
             <th width="12%" style="text-align:right;">Total</th>
             <th width="10%">Due</th>
+            <th width="16%">Actions</th>
           </tr>
           </thead>
 
           <tbody>
           <tr th:if="${#lists.isEmpty(bills)}">
-            <td colspan="10" style="text-align:center; padding:40px;">데이터가 없습니다.</td>
+            <td colspan="11" style="text-align:center; padding:40px;">데이터가 없습니다.</td>
           </tr>
 
           <tr th:each="b : ${bills}">
@@ -81,6 +88,22 @@
             <td style="text-align:right;" th:text="${b.etcAmountText()}">-</td>
             <td style="text-align:right; font-weight:bold;" th:text="${b.totalAmountText()}">-</td>
             <td th:text="${b.dueDateText()}">-</td>
+            <td>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <a class="btn btn--ghost" target="_blank"
+                   th:href="@{/bills/preview/email(invoice_id=${b.invoiceId()})}">
+                  Email 프리뷰
+                </a>
+                <a class="btn btn--ghost" target="_blank"
+                   th:href="@{/bills/preview/sms(invoice_id=${b.invoiceId()})}">
+                  SMS 프리뷰
+                </a>
+                <a class="btn btn--ghost"
+                   th:href="@{/sending(billing_yyyymm=${billing_yyyymm}, invoice_id=${b.invoiceId()})}">
+                  Sending
+                </a>
+              </div>
+            </td>
           </tr>
           </tbody>
         </table>
