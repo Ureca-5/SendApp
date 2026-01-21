@@ -12,6 +12,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import com.mycom.myapp.sendapp.delivery.dto.DeliveryRetryDto;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryStatus;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryChannelType;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryStatusType;
@@ -21,12 +22,12 @@ import lombok.RequiredArgsConstructor;
 @Repository  
 @RequiredArgsConstructor 
 public class DeliveryStatusRepository {
-	
-	private final JdbcTemplate jdbcTemplate;
+    
+    private final JdbcTemplate jdbcTemplate;
     private static final DeliveryStatusRowMapper ROW_MAPPER = new DeliveryStatusRowMapper();
 
     // ==========================================
-    // 1️⃣ [Loader용] 대량 적재 기능 (왼쪽 코드)
+    // 1️⃣ [Loader용] 대량 적재 기능
     // ==========================================
     public void saveAll(List<DeliveryStatus> statusList) {
         String sql = "INSERT INTO delivery_status " +
@@ -55,7 +56,7 @@ public class DeliveryStatusRepository {
     }
 
     // ==========================================
-    // 2️⃣ [Worker용] 중복 방지 및 상태 선점 (오른쪽 코드)
+    // 2️⃣ [Worker용] 중복 방지 및 상태 선점
     // ==========================================
     public boolean updateStatusToProcessing(Long id, String channel) {
         String sql = "UPDATE delivery_status SET status = 'PROCESSING', last_attempt_at = NOW() " +
@@ -68,7 +69,7 @@ public class DeliveryStatusRepository {
     }
     
     // ==========================================
-    // 3️⃣ [Worker용] 발송 결과 업데이트 (오른쪽 코드)
+    // 3️⃣ [Worker용] 발송 결과 업데이트
     // ==========================================
     public void updateResult(Long id, DeliveryStatusType status, LocalDateTime lastAttemptAt) {
         String sql = "UPDATE delivery_status SET status = ?, last_attempt_at = ? " +
@@ -78,7 +79,7 @@ public class DeliveryStatusRepository {
     }
 
     // ==========================================
-    // 4️⃣ [기타] 단순 상태 업데이트 (왼쪽 코드 - 필요시 사용)
+    // 4️⃣ [기타] 단순 상태 업데이트
     // ==========================================
     public void updateStatus(Long invoiceId, DeliveryStatusType newStatus) {
         String sql = "UPDATE delivery_status " +
@@ -91,10 +92,9 @@ public class DeliveryStatusRepository {
                 invoiceId
         );
     }
-    //중복키 에러시 에러난 지점 스킵후 나머지 저장하는 코드, 기존 saveAll 사용 안하고 이 함수 사용
+
+    // [Loader용] 중복 무시 저장 (INSERT IGNORE)
     public void saveAllIgnore(List<DeliveryStatus> statusList) {
-        // ⚠️ MySQL 전용 문법: INSERT IGNORE
-        // 중복된 PK(invoice_id)가 들어오면 에러 없이 무시하고 넘어감
         String sql = "INSERT IGNORE INTO delivery_status " +
                      "(invoice_id, status, delivery_channel, retry_count, last_attempt_at, created_at) " +
                      "VALUES (?, ?, ?, ?, ?, ?)";
@@ -119,8 +119,63 @@ public class DeliveryStatusRepository {
         });
     }
     
+    // ==========================================
+    // 5️⃣ [Scheduler용] 재발송 대상 조회 (JOIN 쿼리)
+    // ==========================================
+    public List<DeliveryRetryDto> findRetryTargets(int maxRetry) {
+        // ★ 중요: 실제 DB 스키마(users)에 맞춰 컬럼명 수정됨
+        // phone_no (X) -> phone (O)
+        // users_id (O)
+        String sql = """
+            SELECT 
+                ds.invoice_id, 
+                ds.delivery_channel, 
+                ds.retry_count,
+                mi.billing_yyyymm, 
+                mi.total_amount,
+                u.name AS recipient_name, 
+                
+                -- ★ 채널이 이메일이면 email, 문자면 phone을 가져오도록 분기 처리 (선택사항)
+                -- 일단은 email을 가져오게 둠. (필요시 u.phone 으로 변경)
+                u.email AS receiver_info
+                
+            FROM delivery_status ds
+            INNER JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
+            INNER JOIN users u ON mi.users_id = u.users_id  -- ★ delivery_user -> users
+            WHERE ds.status = 'FAILED' 
+              AND ds.retry_count < ?
+        """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            return DeliveryRetryDto.builder()
+                    .invoiceId(rs.getLong("invoice_id"))
+                    .deliveryChannel(rs.getString("delivery_channel"))
+                    .retryCount(rs.getInt("retry_count"))
+                    .billingYyyymm(String.valueOf(rs.getInt("billing_yyyymm")))
+                    .totalAmount(rs.getLong("total_amount"))
+                    .recipientName(rs.getString("recipient_name"))
+                    .receiverInfo(rs.getString("receiver_info"))
+                    .build();
+        }, maxRetry);
+    }
+    
+    // ==========================================
+    // 6️⃣ [Scheduler용] 상태 초기화
+    // ==========================================
+    public void resetStatusToReady(Long invoiceId, int currentRetryCount) {
+        String sql = "UPDATE delivery_status " +
+                     "SET status = 'READY', retry_count = ?, last_attempt_at = ? " +
+                     "WHERE invoice_id = ?";
+        
+        jdbcTemplate.update(sql, 
+            currentRetryCount + 1,        
+            Timestamp.valueOf(LocalDateTime.now()), 
+            invoiceId
+        );
+    }
+    
     /**
-     * 내부 정적 RowMapper 클래스 (공통)
+     * 내부 정적 RowMapper 클래스
      */
     private static final class DeliveryStatusRowMapper implements RowMapper<DeliveryStatus> {
         @Override
@@ -140,5 +195,5 @@ public class DeliveryStatusRepository {
             Timestamp ts = rs.getTimestamp(columnName);
             return (ts != null) ? ts.toLocalDateTime() : null;
         }
-    }
+    } 
 }
