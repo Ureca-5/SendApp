@@ -66,6 +66,47 @@ public class DeliveryRetryScheduler {
             }
         }
         
-        log.info("✅ [재발송] {}건 처리 완료", failedList.size());
+        log.info("✅ [재발송] {}건 Redis 대기열 적재 완료", failedList.size());
+    }
+ // [Fallback 스케줄러] 이메일 3번 실패하면 SMS로 전환 (10초마다 체크)
+    @Scheduled(cron = "*/10 * * * * *") 
+    @Transactional
+    public void fallbackToSms() {
+        // 1. 3번 이상 실패한 이메일 건 조회 (폰번호 들고옴)
+        List<DeliveryRetryDto> fallbackList = statusRepository.findFallbackTargets(MAX_RETRY_COUNT);
+
+        if (fallbackList.isEmpty()) {
+            return;
+        }
+
+        log.info("🚨 [채널 전환] 이메일 발송 실패 {}건 -> SMS로 전환 시도", fallbackList.size());
+
+        for (DeliveryRetryDto dto : fallbackList) {
+            try {
+                // 2. Redis 메시지 생성 (이미 DTO에 SMS, 폰번호가 들어있음)
+                Map<String, String> fieldMap = new HashMap<>();
+                fieldMap.put("invoice_id", String.valueOf(dto.getInvoiceId()));
+                fieldMap.put("delivery_channel", dto.getDeliveryChannel()); // "SMS"
+                
+                // 로그 확인용: "SMS 1회차"라고 보이게 1을 넣음 (DB는 0으로 초기화됨)
+                fieldMap.put("retry_count", "1"); 
+                
+                fieldMap.put("billing_yyyymm", dto.getBillingYyyymm());
+                fieldMap.put("recipient_name", dto.getRecipientName());
+                fieldMap.put("receiver_info", dto.getReceiverInfo()); // 폰번호 (010-xxxx)
+                fieldMap.put("total_amount", String.valueOf(dto.getTotalAmount()));
+
+                // 3. Redis 적재
+                MapRecord<String, String, String> record = StreamRecords.mapBacked(fieldMap).withStreamKey(WAITING_STREAM);
+                redisTemplate.opsForStream().add(record);
+
+                // 4. DB 업데이트 (채널 SMS로 변경, 카운트 0으로 초기화)
+                statusRepository.switchToSms(dto.getInvoiceId());
+
+            } catch (Exception e) {
+                log.error("❌ SMS 전환 실패 (ID: {})", dto.getInvoiceId(), e);
+            }
+        }
+        log.info("✅ [채널 전환] {}건 SMS 대기열 적재 완료", fallbackList.size());
     }
 }

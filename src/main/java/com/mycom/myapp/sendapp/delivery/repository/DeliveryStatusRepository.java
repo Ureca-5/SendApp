@@ -205,6 +205,57 @@ public class DeliveryStatusRepository {
             invoiceId
         );
     }
+ // ==========================================
+    // 7️⃣ [Fallback용] 3회 실패한 이메일 -> SMS 전환 대상 조회
+    // ==========================================
+    public List<DeliveryRetryDto> findFallbackTargets(int maxRetry) {
+        // ★ 핵심: u.email 대신 u.phone을 가져오고, 채널은 'SMS'로 고정해서 가져옴
+        String sql = """
+            SELECT 
+                ds.invoice_id, 
+                'SMS' as delivery_channel,  -- 이제부터 SMS라고 우김
+                0 as retry_count,           -- SMS로는 첫 시도니까 0으로 간주
+                mi.billing_yyyymm, 
+                mi.total_amount,
+                u.name AS recipient_name, 
+                u.phone AS receiver_info    -- ★ 여기가 핵심! (이메일 -> 폰번호)
+            FROM delivery_status ds
+            INNER JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
+            INNER JOIN users u ON mi.users_id = u.users_id
+            WHERE ds.status = 'FAILED' 
+              AND ds.retry_count >= ?       -- 3회 이상 실패했고
+              AND ds.delivery_channel = 'EMAIL' -- 이메일이었던 애들만
+        """;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> {
+            return DeliveryRetryDto.builder()
+                    .invoiceId(rs.getLong("invoice_id"))
+                    .deliveryChannel(rs.getString("delivery_channel")) // "SMS"가 들어감
+                    .retryCount(rs.getInt("retry_count")) // 0이 들어감
+                    .billingYyyymm(String.valueOf(rs.getInt("billing_yyyymm")))
+                    .totalAmount(rs.getLong("total_amount"))
+                    .recipientName(rs.getString("recipient_name"))
+                    .receiverInfo(rs.getString("receiver_info")) // 폰번호가 들어감
+                    .build();
+        }, maxRetry);
+    }
+
+    // ==========================================
+    // 8️⃣ [Fallback용] DB 상태 변경 (EMAIL -> SMS, 카운트 초기화)
+    // ==========================================
+    public void switchToSms(Long invoiceId) {
+        String sql = "UPDATE delivery_status " +
+                     "SET status = 'READY', " +     // 다시 대기 상태로
+                     "    delivery_channel = 'SMS', " + // 채널 변경
+                     "    retry_count = 0, " +      // 횟수 리셋 (SMS로서 새출발)
+                     "    last_attempt_at = ? " +
+                     "WHERE invoice_id = ?";
+        
+        jdbcTemplate.update(sql, 
+            Timestamp.valueOf(LocalDateTime.now()), 
+            invoiceId
+        );
+    }
     
     /**
      * 내부 정적 RowMapper 클래스

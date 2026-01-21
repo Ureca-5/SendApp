@@ -4,13 +4,15 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
 @Builder
-public class MonthlyInvoiceRowDto {
+public class MonthlyInvoiceRowDto implements Serializable {
+    private static final long serialVersionUID = 1L;
     /** 식별자 (DB insert 이후 채워질 수 있음) */
     private Long invoiceId;
 

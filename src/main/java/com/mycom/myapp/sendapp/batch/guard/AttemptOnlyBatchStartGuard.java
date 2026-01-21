@@ -1,6 +1,7 @@
 package com.mycom.myapp.sendapp.batch.guard;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -25,6 +26,31 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class AttemptOnlyBatchStartGuard implements BatchStartGuard {
     private final JdbcTemplate jdbcTemplate;
+
+    private static final String TARGET_COUNT_SQL = """
+        SELECT COUNT(*)
+        FROM users u
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM monthly_invoice mi
+            WHERE mi.users_id = u.users_id
+              AND mi.billing_yyyymm = ?
+        )
+        AND (
+            EXISTS (
+                SELECT 1
+                FROM subscribe_billing_history sbh
+                WHERE sbh.users_id = u.users_id
+                  AND sbh.billing_yyyymm = ?
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM micro_payment_billing_history mph
+                WHERE mph.users_id = u.users_id
+                  AND mph.billing_yyyymm = ?
+            )
+        )
+        """;
 
     /**
      * Step0(Tasklet)가 이미 트랜잭션을 잡고 실행되므로, Guard는 "현재 트랜잭션 안에서만" 수행되도록 강제합니다.
@@ -74,13 +100,17 @@ public class AttemptOnlyBatchStartGuard implements BatchStartGuard {
         //
         // target_count(정산 대상 회원 수)는 지금 단계에서는 0으로 넣고,
         // Step0에서 "정산 대상 회원 수 count" 로직이 확정되면 채우는 것으로 진행합니다.
+
+        // 1) 정산 대상 회원 수 카운트 (Reader 조건과 동일해야 함)
+        long targetCount = countTargetUsers(targetYyyymm);
+
         String insertSql = """
             INSERT INTO monthly_invoice_batch_attempt
                 (target_yyyymm, execution_status, execution_type, started_at, ended_at, duration_ms,
-                 success_count, fail_count, host_name)
+                 success_count, fail_count, host_name, target_count)
             VALUES
                 (?, 'STARTED', 'SCHEDULED', ?, NULL, NULL,
-                 0, 0, ?)
+                 0, 0, ?, ?)
             """;
 
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -91,6 +121,7 @@ public class AttemptOnlyBatchStartGuard implements BatchStartGuard {
                 ps.setInt(1, targetYyyymm);
                 ps.setTimestamp(2, Timestamp.valueOf(startedAt));
                 ps.setString(3, hostName);
+                ps.setLong(4, targetCount);
                 return ps;
             }, keyHolder);
 
@@ -112,5 +143,22 @@ public class AttemptOnlyBatchStartGuard implements BatchStartGuard {
             // 여기서 예외를 래핑하여 호출자가 원인 파악하기 쉽게 합니다.
             throw new IllegalStateException("STARTED attempt 생성에 실패했습니다. targetYyyymm=" + targetYyyymm, e);
         }
+    }
+
+    /**
+     * [절차]
+     * 1) users u를 기준으로, monthly_invoice에 해당 월 헤더가 "없는" 유저만 필터
+     * 2) subscribe_billing_history / micro_payment_billing_history 중
+     *    해당 월 원천 데이터가 "하나라도 존재"하는 유저만 필터
+     * 3) 위 조건을 만족하는 유저 수 COUNT(*)
+     */
+    private long countTargetUsers(Integer yyyymm) {
+        // 바인딩은 총 3번(각 서브쿼리 billing_yyyymm)
+        Long count = jdbcTemplate.queryForObject(
+                TARGET_COUNT_SQL,
+                Long.class,
+                yyyymm, yyyymm, yyyymm
+        );
+        return (count == null) ? 0L : count;
     }
 }

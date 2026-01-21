@@ -12,6 +12,7 @@ public class SubscriptionSegmentDto {
     private Long deviceId;
     private Long subscribeBillingHistoryId;
     private Integer subscribeServiceId;
+    private Integer subscribeCategoryId;
     private String serviceName;
 
     private LocalDate segmentStartDate;

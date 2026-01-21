@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 
 import javax.sql.DataSource;
 import java.util.Map;
+import com.mycom.myapp.sendapp.batch.dto.UserBillingDayDto;
 
 /**
  * 역할: 조건을 만족하는 회원의 usersId 조회 <br>
@@ -31,7 +32,7 @@ public class SettlementTargetUserReaderConfig {
      */
     @Bean
     @StepScope
-    public JdbcPagingItemReader<Long> settlementTargetUserIdReader(
+    public JdbcPagingItemReader<UserBillingDayDto> settlementTargetUserIdReader(
             DataSource dataSource,
             @Value("#{jobParameters['targetYyyymm']}") Integer targetYyyymm
     ) {
@@ -41,7 +42,7 @@ public class SettlementTargetUserReaderConfig {
 
         // MySQL PagingQueryProvider 구성
         MySqlPagingQueryProvider queryProvider = new MySqlPagingQueryProvider();
-        queryProvider.setSelectClause("SELECT u.users_id");
+        queryProvider.setSelectClause("SELECT u.users_id, u.billing_day");
         queryProvider.setFromClause("FROM users u");
 
         // 원천 데이터 존재 + invoice 헤더 미존재
@@ -75,14 +76,17 @@ public class SettlementTargetUserReaderConfig {
         int pageSize = 1000; // chunkSize와 동일하게 두는 편이 이해/운영이 쉽습니다(필수는 아님)
         int fetchSize = 1000;
 
-        return new JdbcPagingItemReaderBuilder<Long>()
+        return new JdbcPagingItemReaderBuilder<UserBillingDayDto>()
                 .name("settlementTargetUserIdReader")
                 .dataSource(dataSource)
                 .queryProvider(queryProvider)
                 .parameterValues(Map.of("yyyymm", targetYyyymm))
                 .pageSize(pageSize)
                 .fetchSize(fetchSize)
-                .rowMapper((rs, rowNum) -> rs.getLong("users_id"))
+                .rowMapper((rs, rowNum) -> UserBillingDayDto.builder()
+                        .usersId(rs.getLong("users_id"))
+                        .billingDay(rs.getObject("billing_day") == null ? null : rs.getInt("billing_day"))
+                        .build())
                 .saveState(true) // 재시작을 고려하면 true (JobRepository에 상태 저장)
                 .build();
     }
