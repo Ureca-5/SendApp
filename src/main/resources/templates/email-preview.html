@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+  <div class="preview-wrap">
+    <div class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">Email Template Preview</h2>
+        <div class="panel__meta">
+          <span class="chip">Invoice ID: <strong th:text="${bill.invoiceId()}">-</strong></span>
+          <span class="chip">Users ID: <strong th:text="${bill.usersId()}">-</strong></span>
+          <span class="chip">청구월: <strong th:text="${bill.billingMonthText()}">-</strong></span>
+          <span class="chip">납부기한: <strong th:text="${bill.dueDateText()}">-</strong></span>
+        </div>
+      </div>
+
+      <div class="panel__body">
+        <div class="hint">
+          아래는 <strong>템플릿 렌더 결과 프리뷰</strong>입니다. (발송과 무관)
+        </div>
+
+        <div class="mt-20">
+          <div class="section-head">
+            <h3 class="section-title">요약</h3>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table">
+              <tbody>
+              <tr><th>요금제(A)</th><td class="ta-right" th:text="${bill.planAmountText()}">-</td></tr>
+              <tr><th>부가서비스(B)</th><td class="ta-right" th:text="${bill.addonAmountText()}">-</td></tr>
+              <tr><th>기타(C)</th><td class="ta-right" th:text="${bill.etcAmountText()}">-</td></tr>
+              <tr><th>할인</th><td class="ta-right" th:text="${bill.discountAmountText()}">-</td></tr>
+              <tr>
+                <th class="amount-strong">합계</th>
+                <td class="ta-right amount-strong" th:text="${bill.totalAmountText()}">-</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mt-20">
+          <div class="section-head">
+            <h3 class="section-title">상세 내역</h3>
+          </div>
+
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+              <tr>
+                <th width="12%">Category</th>
+                <th>Service</th>
+                <th class="ta-right" width="14%">Origin</th>
+                <th class="ta-right" width="14%">Discount</th>
+                <th class="ta-right" width="14%">Total</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr th:if="${#lists.isEmpty(details)}">
+                <td colspan="5" class="td-muted ta-center">상세 내역이 없습니다.</td>
+              </tr>
+              <tr th:each="d : ${details}">
+                <td th:text="${d.invoiceCategoryId()}">-</td>
+                <td th:text="${d.serviceName()}">-</td>
+                <td class="ta-right" th:text="${#numbers.formatInteger(d.originAmount(), 0, 'COMMA')} + '원'">-</td>
+                <td class="ta-right" th:text="${#numbers.formatInteger(d.discountAmount(), 0, 'COMMA')} + '원'">-</td>
+                <td class="ta-right" th:text="${#numbers.formatInteger(d.totalAmount(), 0, 'COMMA')} + '원'">-</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="hint mt-12">
+            본 프리뷰는 관리자 검수용이며, 실 발송 결과와 다를 수 있습니다(렌더러가 분리되어 있다면 위험 신호).
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

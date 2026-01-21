@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+  <div class="preview-phone">
+    <div class="panel">
+      <div class="panel__head">
+        <h2 class="panel__title">SMS Template Preview</h2>
+        <div class="panel__meta">
+          <span class="chip">Invoice: <strong th:text="${bill.invoiceId()}">-</strong></span>
+          <span class="chip">Users: <strong th:text="${bill.usersId()}">-</strong></span>
+          <span class="chip"><strong th:text="${bill.billingMonthText()}">-</strong></span>
+        </div>
+      </div>
+
+      <div class="panel__body">
+        <div class="hint">아래는 템플릿 렌더 결과 프리뷰입니다. (발송과 무관)</div>
+        <pre class="codeblock mt-12" th:text="${smsText}">
+[LGU+] 2026년 01월 청구서
+합계 0원 / 납부기한 2026-01-25
+상세는 이메일 또는 앱에서 확인하세요.
+        </pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

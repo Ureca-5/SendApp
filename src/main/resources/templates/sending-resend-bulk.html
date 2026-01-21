@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+  <div class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">FAILED 일괄 재전송 요청 (월+조건 기준)</h2>
+    </div>
+
+    <div class="panel__body">
+      <div class="empty mb-14">
+        <div class="empty__title">주의</div>
+        <div class="empty__desc">
+          체크박스/부분선택은 제공하지 않습니다. 대량 운영을 위한 <strong>일괄 처리</strong>만 지원합니다.<br/>
+          이 기능은 실제 발송이 아니라 <strong>FAILED → READY 전환</strong> 요청만 등록합니다.
+        </div>
+      </div>
+
+      <form method="post" th:action="@{/admin/actions/sending/resend-bulk}" class="row">
+        <input type="hidden" name="billing_yyyymm" th:value="${billing_yyyymm}"/>
+
+        <div class="field">
+          <label class="label">YYYYMM</label>
+          <input name="billing_yyyymm_view" class="input w-140" th:value="${billing_yyyymm}" disabled/>
+        </div>
+
+        <div class="field">
+          <label class="label">FAILED Channel</label>
+          <select name="failed_channel" class="select w-160" required>
+            <option value="EMAIL">EMAIL</option>
+            <option value="SMS">SMS</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">Resend Channel</label>
+          <select name="resend_channel" class="select w-160" required>
+            <option value="SMS">SMS</option>
+            <option value="EMAIL">EMAIL</option>
+          </select>
+        </div>
+
+        <div class="field field--actions">
+          <button class="btn btn--primary" type="submit">FAILED 대상 일괄 재전송 요청</button>
+          <a class="btn btn--ghost" th:href="@{/sending(billing_yyyymm=${billing_yyyymm})}">Sending 홈</a>
+        </div>
+      </form>
+
+      <div class="hint mt-12">
+        예: (EMAIL 실패) → Resend Channel=SMS 선택 후 일괄 요청
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

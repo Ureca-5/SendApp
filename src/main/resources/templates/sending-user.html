@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+
+  <div class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">유저 단건 발송 조회</h2>
+      <div class="panel__meta">
+        <span class="chip">YYYYMM: <strong th:text="${billing_yyyymm}">-</strong></span>
+        <span class="chip">Users ID: <strong th:text="${users_id}">-</strong></span>
+      </div>
+    </div>
+
+    <div class="panel__body">
+
+      <form class="filterbar" method="get" th:action="@{/sending/user}">
+        <div class="filterbar__row">
+          <div class="field">
+            <label class="label">YYYYMM</label>
+            <input name="billing_yyyymm" class="input w-140" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
+          </div>
+          <div class="field">
+            <label class="label">Users ID</label>
+            <input name="users_id" class="input w-140" th:value="${users_id}" placeholder="예: 10001"/>
+          </div>
+          <div class="field field--actions">
+            <button class="btn btn--primary" type="submit">조회</button>
+            <a class="btn btn--ghost" th:href="@{/sending(billing_yyyymm=${billing_yyyymm})}">Sending 홈</a>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+          <tr>
+            <th width="12%">Invoice</th>
+            <th width="10%">YYYYMM</th>
+            <th width="10%">Status</th>
+            <th width="10%">Channel</th>
+            <th class="ta-right" width="8%">Retry</th>
+            <th width="16%">Last Attempt</th>
+            <th width="16%">Created</th>
+            <th width="10%" class="ta-center">History</th>
+            <th width="10%" class="ta-center">Resend</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr th:if="${#lists.isEmpty(userRows)}">
+            <td colspan="9" class="td-muted">데이터가 없습니다.</td>
+          </tr>
+
+          <tr th:each="r : ${userRows}">
+            <td th:text="${r.invoiceId()}">-</td>
+            <td th:text="${r.billingYyyymm()}">-</td>
+            <td th:text="${r.status()}">-</td>
+            <td th:text="${r.channel()}">-</td>
+            <td class="ta-right" th:text="${r.retryCount()}">0</td>
+            <td th:text="${r.lastAttemptAt()}">-</td>
+            <td th:text="${r.createdAt()}">-</td>
+            <td class="ta-center">
+              <a class="btn btn--ghost btn--small"
+                 th:href="@{/sending/user(billing_yyyymm=${billing_yyyymm}, users_id=${users_id}, invoice_id=${r.invoiceId()})}">
+                이력
+              </a>
+            </td>
+            <td class="ta-center">
+              <a class="btn btn--ghost btn--small"
+                 th:href="@{/sending/resend-user(billing_yyyymm=${billing_yyyymm}, users_id=${users_id})}">
+                재전송
+              </a>
+            </td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- History Panel -->
+  <div class="panel mt-20" th:if="${selectedInvoiceId != null}">
+    <div class="panel__head">
+      <h2 class="panel__title">
+        Delivery History (invoiceId=<span th:text="${selectedInvoiceId}">-</span>)
+      </h2>
+    </div>
+
+    <div class="panel__body">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+          <tr>
+            <th width="8%">Attempt</th>
+            <th width="10%">Channel</th>
+            <th>Receiver</th>
+            <th width="10%">Status</th>
+            <th>Error</th>
+            <th width="16%">Requested</th>
+            <th width="16%">Sent</th>
+          </tr>
+          </thead>
+
+          <tbody>
+          <tr th:if="${#lists.isEmpty(historyRows)}">
+            <td colspan="7" class="td-muted">이력이 없습니다.</td>
+          </tr>
+
+          <tr th:each="h : ${historyRows}">
+            <td th:text="${h.attemptNo()}">-</td>
+            <td th:text="${h.channel()}">-</td>
+            <td th:text="${h.receiverInfo()}">-</td>
+            <td th:text="${h.status()}">-</td>
+            <td th:text="${h.errorMessage()}">-</td>
+            <td th:text="${h.requestedAt()}">-</td>
+            <td th:text="${h.sentAt()}">-</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+</body>
+</html>

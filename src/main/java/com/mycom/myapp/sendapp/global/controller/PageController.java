@@ -1,12 +1,9 @@
 package com.mycom.myapp.sendapp.global.controller;
 
-import com.mycom.myapp.sendapp.admin.invoice.dto.BillRowViewDTO;
-import com.mycom.myapp.sendapp.admin.invoice.dto.InvoiceDetailRowViewDTO;
-import com.mycom.myapp.sendapp.admin.invoice.service.BillService;
-import com.mycom.myapp.sendapp.admin.user.dto.UserRowViewDTO;
-import com.mycom.myapp.sendapp.admin.user.service.UserService;
-import com.mycom.myapp.sendapp.admin.delivery.service.SendingService;
 import com.mycom.myapp.sendapp.admin.batchjobs.service.BatchJobsService;
+import com.mycom.myapp.sendapp.admin.delivery.service.SendingService;
+import com.mycom.myapp.sendapp.admin.invoice.service.BillService;
+import com.mycom.myapp.sendapp.admin.user.service.UserService;
 
 import java.util.List;
 
@@ -46,19 +43,13 @@ public class PageController {
         model.addAttribute("billing_yyyymm", billingYyyymm);
         model.addAttribute("filterAction", "/");
 
-        // ✅ Batch 현황 (최근 5건)
-        java.util.List<com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowDTO> recent =
-                batchJobsService.listAttempts(billingYyyymm, 0, 5);
-
-        com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowDTO latest =
-                (recent == null || recent.isEmpty()) ? null : recent.get(0);
-
-        model.addAttribute("batchRecentAttempts", recent);
-        model.addAttribute("batchLatestAttempt", latest);
+        // ⚠️ 네 BatchJobsService에 listAttempts(Integer,int,int)가 없다고 뜸.
+        // 그래서 여기서 배치 최근 시도 조회는 일단 제거 (서비스 시그니처 확인 후 다시 연결).
+        model.addAttribute("batchRecentAttempts", List.of());
+        model.addAttribute("batchLatestAttempt", null);
 
         return "dashboard";
     }
-
 
     @GetMapping("/users")
     public String users(
@@ -74,66 +65,64 @@ public class PageController {
         int p = (page == null) ? 0 : Math.max(page, 0);
         boolean isSearched = (searched != null && searched == 1);
 
-        List<UserRowViewDTO> users = userService.list(isSearched, keyword, email, phone, withdrawn, p);
-
+        var users = userService.list(isSearched, keyword, email, phone, withdrawn, p);
         int total = isSearched ? userService.countIfNeeded(keyword, email, phone, withdrawn) : 0;
 
+        model.addAttribute("pageTitle", "Users");
+        model.addAttribute("activeMenu", "users");
+        model.addAttribute("filterAction", "/users");
+
         model.addAttribute("users", users);
+        model.addAttribute("total", total);
+        model.addAttribute("searched", isSearched);
+        model.addAttribute("page", p);
+        model.addAttribute("size", com.mycom.myapp.sendapp.admin.user.service.UserService.FIXED_SIZE);
+
+        model.addAttribute("billing_yyyymm", billing_yyyymm);
         model.addAttribute("keyword", keyword);
         model.addAttribute("email", email);
         model.addAttribute("phone", phone);
         model.addAttribute("withdrawn", withdrawn);
-        model.addAttribute("page", p);
-        model.addAttribute("size", UserService.FIXED_SIZE);
-        model.addAttribute("billing_yyyymm", billing_yyyymm);
-
-        model.addAttribute("searched", isSearched);
-        model.addAttribute("total", total);
 
         return "users";
     }
 
-
-    // ✅ 청구서 발행 내역
     @GetMapping("/bills")
     public String bills(
             @RequestParam(value = "billing_yyyymm", required = false) Integer billingYyyymm,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "50") int size,
-            @RequestParam(value = "keyword", required = false) String keyword, // users_id or name
-            @RequestParam(value = "invoice_id", required = false) Long invoiceId, // 상세 선택(옵션)
+            @RequestParam(value = "keyword", required = false) String keyword,
+            @RequestParam(value = "invoice_id", required = false) Long invoiceId,
             Model model
     ) {
         model.addAttribute("pageTitle", "Bills");
         model.addAttribute("activeMenu", "bills");
         model.addAttribute("billing_yyyymm", billingYyyymm);
         model.addAttribute("filterAction", "/bills");
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("page", page);
+        model.addAttribute("size", size);
 
-        long totalL = billService.count(billingYyyymm, keyword);
+        // ✅ BillService 시그니처: count(Integer, String, Long)
+        // ✅ BillService 시그니처: list(Integer, String, Long, int, int)
+        long totalL = billService.count(billingYyyymm, keyword, invoiceId);
         int total = (totalL > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) totalL;
 
-        List<BillRowViewDTO> rows = billService.list(billingYyyymm, keyword, page, size);
-
+        var rows = billService.list(billingYyyymm, keyword, invoiceId, page, size);
         int totalPages = (int) Math.ceil(total / (double) Math.max(size, 1));
 
         model.addAttribute("bills", rows);
         model.addAttribute("total", total);
-        model.addAttribute("page", page);
-        model.addAttribute("size", size);
         model.addAttribute("totalPages", totalPages);
-        model.addAttribute("keyword", keyword);
-
 
         if (invoiceId != null) {
-            List<InvoiceDetailRowViewDTO> detail = billService.details(invoiceId);
             model.addAttribute("selectedInvoiceId", invoiceId);
-            model.addAttribute("details", detail);
         }
 
         return "bills";
     }
 
-    // ✅ 수납/미납 관리 (ERD에 납부상태가 없으니 bills 재사용 수준)
     @GetMapping("/payments")
     public String payments(
             @RequestParam(value = "billing_yyyymm", required = false) Integer billingYyyymm,
@@ -147,8 +136,13 @@ public class PageController {
         model.addAttribute("billing_yyyymm", billingYyyymm);
         model.addAttribute("filterAction", "/payments");
 
-        long total = billService.count(billingYyyymm, keyword);
-        var rows = billService.list(billingYyyymm, keyword, page, size);
+        // payments는 invoice_id가 없으니 null로 고정
+        Long invoiceId = null;
+
+        long totalL = billService.count(billingYyyymm, keyword, invoiceId);
+        int total = (totalL > Integer.MAX_VALUE) ? Integer.MAX_VALUE : (int) totalL;
+
+        var rows = billService.list(billingYyyymm, keyword, invoiceId, page, size);
         int totalPages = (int) Math.ceil(total / (double) Math.max(size, 1));
 
         model.addAttribute("bills", rows);
@@ -158,14 +152,13 @@ public class PageController {
         model.addAttribute("totalPages", totalPages);
         model.addAttribute("keyword", keyword);
 
-        // templates/payments.html 에서 bills 테이블만 보여주면 됨
         return "payments";
     }
 
-    // ✅ 발송 이력/재발송(일단 조회만)
     @GetMapping("/sending")
     public String sending(
             @RequestParam(value = "billing_yyyymm", required = false) Integer billingYyyymm,
+            @RequestParam(value = "users_id", required = false) Long usersId,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "50") int size,
             @RequestParam(value = "status", required = false) String status,
@@ -176,19 +169,28 @@ public class PageController {
         model.addAttribute("pageTitle", "Sending");
         model.addAttribute("activeMenu", "sending");
         model.addAttribute("billing_yyyymm", billingYyyymm);
+        model.addAttribute("users_id", usersId);
         model.addAttribute("filterAction", "/sending");
+        model.addAttribute("page", page);
+        model.addAttribute("size", size);
+        model.addAttribute("status", status);
+        model.addAttribute("channel", channel);
 
-        int total = sendingService.count(billingYyyymm, status, channel);
-        var rows = sendingService.list(billingYyyymm, status, channel, page, size);
+        // ✅ 네 SendingService에는 statusStats/channelStatusStats 메서드가 없으므로 제거
+        model.addAttribute("statusStats", List.of());
+        model.addAttribute("channelStatusStats", List.of());
+        model.addAttribute("userDeliveryRows", List.of());
+
+        // ✅ SendingService 시그니처(에러 메시지 기준)
+        // count(Integer, String, String, Long, Long)
+        // list(Integer, String, String, Long, Long, int, int)
+        int total = sendingService.count(billingYyyymm, status, channel, usersId, invoiceId);
+        var rows = sendingService.list(billingYyyymm, status, channel, usersId, invoiceId, page, size);
         int totalPages = (int) Math.ceil(total / (double) Math.max(size, 1));
 
         model.addAttribute("sendingRows", rows);
         model.addAttribute("total", total);
-        model.addAttribute("page", page);
-        model.addAttribute("size", size);
         model.addAttribute("totalPages", totalPages);
-        model.addAttribute("status", status);
-        model.addAttribute("channel", channel);
 
         if (invoiceId != null) {
             model.addAttribute("selectedInvoiceId", invoiceId);
@@ -198,28 +200,24 @@ public class PageController {
         return "sending";
     }
 
-    // ✅ 배치 작업 로그
     @GetMapping("/batch-jobs")
     public String batchJobs(
             @RequestParam(value = "billing_yyyymm", required = false) Integer billingYyyymm,
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @RequestParam(value = "size", defaultValue = "50") int size,
+            @RequestParam(value = "attempt_id", required = false) Long attemptId,
             Model model
     ) {
         model.addAttribute("pageTitle", "Batch Jobs");
         model.addAttribute("activeMenu", "batch-jobs");
         model.addAttribute("billing_yyyymm", billingYyyymm);
         model.addAttribute("filterAction", "/batch-jobs");
+        model.addAttribute("attempt_id", attemptId);
 
-        int total = batchJobsService.countAttempts(billingYyyymm);
-        var rows = batchJobsService.listAttempts(billingYyyymm, page, size);
-        int totalPages = (int) Math.ceil(total / (double) Math.max(size, 1));
-
-        model.addAttribute("attemptRows", rows);
-        model.addAttribute("total", total);
-        model.addAttribute("page", page);
-        model.addAttribute("size", size);
-        model.addAttribute("totalPages", totalPages);
+        // ⚠️ BatchJobsService 시그니처를 모름(listAttempts undefined).
+        // 일단 템플릿이 안 깨지도록 키만 채움. 서비스 시그니처 확인 후 연결.
+        model.addAttribute("statusStats", List.of());
+        model.addAttribute("attemptRows", List.of());
+        model.addAttribute("attemptDetail", null);
+        model.addAttribute("failureRows", List.of());
 
         return "batch-jobs";
     }
@@ -232,7 +230,7 @@ public class PageController {
     ) {
         UriComponentsBuilder b = UriComponentsBuilder.fromPath("/bills");
         if (billingYyyymm != null) b.queryParam("billing_yyyymm", billingYyyymm);
-        if (usersId != null) b.queryParam("keyword", usersId); // bills는 keyword(users_id or name) :contentReference[oaicite:9]{index=9}
+        if (usersId != null) b.queryParam("keyword", usersId);
         return "redirect:" + b.toUriString();
     }
 

@@ -15,26 +15,32 @@
 
     <div class="panel__body">
 
-      <form class="filterbar" method="get" th:action="@{/bills}"
-            style="background:#f8f8f8; padding:20px; border-radius:8px; margin-bottom:20px;">
+      <!-- 검색 -->
+      <form class="filterbar" method="get" th:action="@{/bills}">
         <input type="hidden" name="page" value="0"/>
 
-        <div style="display:flex; gap:15px; align-items:flex-end; flex-wrap:wrap;">
+        <div class="filterbar__row">
           <div class="field">
-            <label style="display:block; margin-bottom:5px; font-size:13px; color:#666;">YYYYMM</label>
-            <input name="billing_yyyymm" class="input" placeholder="예: 202601"
-                   th:value="${billing_yyyymm}" style="width:140px;"/>
+            <label class="label">YYYYMM</label>
+            <input name="billing_yyyymm" class="input w-140" placeholder="예: 202601"
+                   th:value="${billing_yyyymm}"/>
           </div>
 
           <div class="field">
-            <label style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Keyword</label>
-            <input name="keyword" class="input" placeholder="User ID or Name"
-                   th:value="${keyword}" style="width:200px;"/>
+            <label class="label">Keyword</label>
+            <input name="keyword" class="input w-220" placeholder="User ID or Name"
+                   th:value="${keyword}"/>
           </div>
 
           <div class="field">
-            <label style="display:block; margin-bottom:5px; font-size:13px; color:#666;">Size</label>
-            <select name="size" class="select" style="width:80px;">
+            <label class="label">Invoice ID</label>
+            <input name="invoice_id" class="input w-180" placeholder="예: 5000123"
+                   th:value="${invoice_id}"/>
+          </div>
+
+          <div class="field">
+            <label class="label">Size</label>
+            <select name="size" class="select w-90">
               <option th:selected="${size==20}" th:value="20">20</option>
               <option th:selected="${size==50}" th:value="50">50</option>
               <option th:selected="${size==100}" th:value="100">100</option>
@@ -48,65 +54,200 @@
         </div>
       </form>
 
-      <div class="table-wrap">
-        <table class="table">
-          <thead>
-          <tr>
-            <th width="10%">Invoice ID</th>
-            <th width="10%">User ID</th>
-            <th width="12%">Billing</th>
-            <th>User</th>
-            <th>Phone</th>
-            <th width="12%" style="text-align:right;">A(요금제)</th>
-            <th width="12%" style="text-align:right;">B(부가)</th>
-            <th width="12%" style="text-align:right;">C(기타)</th>
-            <th width="12%" style="text-align:right;">Total</th>
-            <th width="10%">Due</th>
-          </tr>
-          </thead>
+      <div class="split split--narrow-right">
 
-          <tbody>
-          <tr th:if="${#lists.isEmpty(bills)}">
-            <td colspan="10" style="text-align:center; padding:40px;">데이터가 없습니다.</td>
-          </tr>
+        <!-- 리스트 -->
+        <div>
+          <div class="table-wrap">
+            <table class="table bills-table">
+              <thead>
+              <tr>
+                <th width="22%">청구서정보</th>
+                <th width="28%">개인정보</th>
+                <th width="18%" class="ta-right">금액</th>
+                <th width="18%">발행/납부</th>
+                <th width="14%">액션</th>
+              </tr>
+              </thead>
 
-          <tr th:each="b : ${bills}">
-            <td th:text="${b.invoiceId()}">-</td>
-            <td th:text="${b.usersId()}">-</td>
-            <td th:text="${b.billingMonthText()}">-</td>
-            <td th:text="${b.userNameMasked()}">-</td>
-            <td th:text="${b.userPhoneMasked()}">-</td>
-            <td style="text-align:right;" th:text="${b.planAmountText()}">-</td>
-            <td style="text-align:right;" th:text="${b.addonAmountText()}">-</td>
-            <td style="text-align:right;" th:text="${b.etcAmountText()}">-</td>
-            <td style="text-align:right; font-weight:bold;" th:text="${b.totalAmountText()}">-</td>
-            <td th:text="${b.dueDateText()}">-</td>
-          </tr>
-          </tbody>
-        </table>
-      </div>
+              <tbody>
+              <tr th:if="${#lists.isEmpty(bills)}">
+                <td colspan="5" class="td-muted ta-center">조회 결과가 없습니다.</td>
+              </tr>
 
-      <div class="pager" style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
-        <div style="font-size:13px; color:#666;">
-          Page <strong style="color:#e6007e;" th:text="${page + 1}">1</strong>
-          / <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
+              <tr th:each="b : ${bills}"
+                  th:classappend="${selectedInvoiceId != null and selectedInvoiceId == b.invoiceId} ? 'is-selected' : ''">
+
+                <!-- 청구서정보 -->
+                <td>
+                  <div class="stack">
+                    <a class="bill-title"
+                       th:href="@{/bills(billing_yyyymm=${billing_yyyymm}, keyword=${keyword}, invoice_id=${b.invoiceId}, page=${page}, size=${size})}">
+                      <span th:text="${b.invoiceId}">5000001</span>
+                    </a>
+                    <div class="bill-meta">
+                      <span th:text="${b.billingMonthText}">2026-01</span>
+                      <span class="dot">·</span>
+                      <span>User:</span>
+                      <span th:text="${b.usersId}">10001</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- 개인정보 -->
+                <td>
+                  <div class="stack">
+                    <div class="bill-title" th:text="${b.userNameMasked}">홍*동</div>
+                    <div class="bill-meta">
+                      <span th:text="${b.userPhoneMasked}">010-****-1234</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- 금액 -->
+                <td class="ta-right">
+                  <div class="stack stack--end">
+                    <div class="amount-strong" th:text="${b.totalAmountText}">44,100</div>
+                    <div class="amount-sub">
+                      <span>요금제</span> <span th:text="${b.planAmountText}">45,000</span>
+                      <span class="dot">·</span>
+                      <span>부가</span> <span th:text="${b.addonAmountText}">0</span>
+                      <span class="dot">·</span>
+                      <span>기타</span> <span th:text="${b.etcAmountText}">0</span>
+                      <span class="dot">·</span>
+                      <span>할인</span> <span th:text="${b.discountAmountText}">-900</span>
+                    </div>
+                  </div>
+                </td>
+
+                <!-- 발행/납부 -->
+                <td>
+                  <div class="stack">
+                    <div class="bill-meta">발행</div>
+                    <div class="bill-title" th:text="${b.createdAtText}">2026-01-01 00:00</div>
+                    <div class="bill-meta mt-8">납부기한</div>
+                    <div class="bill-title" th:text="${b.dueDateText}">2026-01-20</div>
+                  </div>
+                </td>
+
+                <!-- 액션 -->
+                <td>
+                  <div class="actions-vert">
+                    <a class="btn btn--small"
+                       th:href="@{/bills/preview/email(invoice_id=${b.invoiceId})}">Email</a>
+                    <a class="btn btn--small"
+                       th:href="@{/bills/preview/sms(invoice_id=${b.invoiceId})}">SMS</a>
+                    <a class="btn btn--small"
+                       th:href="@{/sending(invoice_id=${b.invoiceId}, billing_yyyymm=${billing_yyyymm})}">Sending</a>
+                  </div>
+                </td>
+
+              </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- 페이저 -->
+          <div class="pager mt-20">
+            <div class="pager__left">
+              Page <strong th:text="${page + 1}">1</strong>
+              / <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
+            </div>
+
+            <div class="pager__right">
+              <a class="btn btn--ghost"
+                 th:classappend="${page <= 0} ? ' is-disabled' : ''"
+                 th:href="@{/bills(page=${page-1}, size=${size}, keyword=${keyword}, billing_yyyymm=${billing_yyyymm}, invoice_id=${invoice_id})}">
+                Prev
+              </a>
+
+              <a class="btn btn--ghost"
+                 th:classappend="${page >= totalPages-1} ? ' is-disabled' : ''"
+                 th:href="@{/bills(page=${page+1}, size=${size}, keyword=${keyword}, billing_yyyymm=${billing_yyyymm}, invoice_id=${invoice_id})}">
+                Next
+              </a>
+            </div>
+          </div>
         </div>
 
-        <div style="display:flex; gap:5px;">
-          <a class="btn"
-             style="background:#fff; border:1px solid #ddd; color:#333;"
-             th:classappend="${page <= 0} ? ' is-disabled' : ''"
-             th:href="@{/bills(page=${page-1}, size=${size}, keyword=${keyword}, billing_yyyymm=${billing_yyyymm})}">
-            Prev
-          </a>
+        <!-- 선택 상세 패널 -->
+        <div class="panel panel--side">
+          <div class="panel__head">
+            <h3 class="panel__title">선택 상세</h3>
+            <div class="panel__meta">
+              <a class="btn btn--ghost btn--small"
+                 th:href="@{/bills(billing_yyyymm=${billing_yyyymm}, keyword=${keyword}, page=${page}, size=${size})}">
+                선택 해제
+              </a>
+            </div>
+          </div>
 
-          <a class="btn"
-             style="background:#fff; border:1px solid #ddd; color:#333;"
-             th:classappend="${page >= totalPages-1} ? ' is-disabled' : ''"
-             th:href="@{/bills(page=${page+1}, size=${size}, keyword=${keyword}, billing_yyyymm=${billing_yyyymm})}">
-            Next
-          </a>
+          <div class="panel__body">
+            <div th:if="${selectedBill == null}" class="empty">
+              <div class="empty__desc">
+                좌측 목록에서 <strong>Invoice ID</strong>를 클릭하면,
+                청구서정보/개인정보/금액/발행날짜/액션을 여기서 확인할 수 있습니다.
+              </div>
+            </div>
+
+            <div th:if="${selectedBill != null}">
+              <!-- 청구서정보 -->
+              <div class="mt-12">
+                <div class="bill-meta mb-14">청구서정보</div>
+                <div class="kv">
+                  <div class="kv__key">Invoice ID</div><div th:text="${selectedBill.invoiceId}">-</div>
+                  <div class="kv__key">User ID</div><div th:text="${selectedBill.usersId}">-</div>
+                  <div class="kv__key">Billing</div><div th:text="${selectedBill.billingMonthText}">-</div>
+                  <div class="kv__key">Due</div><div th:text="${selectedBill.dueDateText}">-</div>
+                </div>
+              </div>
+
+              <!-- 개인정보 -->
+              <div class="mt-20">
+                <div class="bill-meta mb-14">개인정보</div>
+                <div class="kv">
+                  <div class="kv__key">Name</div><div th:text="${selectedBill.userNameMasked}">-</div>
+                  <div class="kv__key">Phone</div><div th:text="${selectedBill.userPhoneMasked}">-</div>
+                </div>
+              </div>
+
+              <!-- 금액 -->
+              <div class="mt-20">
+                <div class="bill-meta mb-14">금액</div>
+                <div class="kv">
+                  <div class="kv__key">요금제</div><div th:text="${selectedBill.planAmountText}">-</div>
+                  <div class="kv__key">부가</div><div th:text="${selectedBill.addonAmountText}">-</div>
+                  <div class="kv__key">기타</div><div th:text="${selectedBill.etcAmountText}">-</div>
+                  <div class="kv__key">할인</div><div th:text="${selectedBill.discountAmountText}">-</div>
+                  <div class="kv__key kv__val--strong">Total</div>
+                  <div class="kv__val--strong" th:text="${selectedBill.totalAmountText}">-</div>
+                </div>
+              </div>
+
+              <!-- 발행날짜 -->
+              <div class="mt-20">
+                <div class="bill-meta mb-14">발행날짜</div>
+                <div class="kv">
+                  <div class="kv__key">Created</div><div th:text="${selectedBill.createdAtText}">-</div>
+                </div>
+              </div>
+
+              <!-- 액션 -->
+              <div class="mt-20">
+                <div class="bill-meta mb-14">액션</div>
+                <div class="row">
+                  <a class="btn btn--primary btn--small"
+                     th:href="@{/bills/preview/email(invoice_id=${selectedBill.invoiceId})}">Email 프리뷰</a>
+                  <a class="btn btn--primary btn--small"
+                     th:href="@{/bills/preview/sms(invoice_id=${selectedBill.invoiceId})}">SMS 프리뷰</a>
+                  <a class="btn btn--ghost btn--small"
+                     th:href="@{/sending(invoice_id=${selectedBill.invoiceId}, billing_yyyymm=${billing_yyyymm})}">Sending 이동</a>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
       </div>
 
     </div>

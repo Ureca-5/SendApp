@@ -4,7 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title th:text="${pageTitle} ?: 'Bill Admin System'">Bill Admin System</title>
-  <link rel="stylesheet" th:href="@{/css/style.css}">
+
+  <!-- Thymeleaf(서버) + 정적(로컬) 모두 대응 -->
+  <link rel="stylesheet" th:href="@{/css/style.css}" href="/css/style.css">
 </head>
 <body>
 
@@ -25,8 +27,8 @@
       <a th:href="@{/bills(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
          th:classappend="${activeMenu} == 'bills' ? ' is-active' : ''">Bills</a>
 
-      <a th:href="@{/payments(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
-         th:classappend="${activeMenu} == 'payments' ? ' is-active' : ''">Payments</a>
+      <!-- Payments: ERD 납부상태 반영 전까지 보류 (Bills로 흡수) -->
+      <span class="nav__item is-disabled">Payments (보류)</span>
 
       <a th:href="@{/sending(billing_yyyymm=${billing_yyyymm})}" class="nav__item"
          th:classappend="${activeMenu} == 'sending' ? ' is-active' : ''">Sending</a>
@@ -35,23 +37,23 @@
          th:classappend="${activeMenu} == 'batch-jobs' ? ' is-active' : ''">Batch Jobs</a>
     </nav>
 
-    <div style="margin-top: auto; font-size: 12px; color: #999;">
+    <div class="sidebar__footer">
       Server: v1.0.2
     </div>
   </aside>
 
   <main class="main">
     <header class="header">
-      <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <div class="header__row">
         <h1 class="header__title" th:text="${pageTitle} ?: '관리자 시스템'">관리자 시스템</h1>
 
         <!-- 전역 청구월 필터 -->
-        <form method="get" th:action="${filterAction} ?: '/'" style="display:flex; gap:8px; align-items:center;">
-          <label style="font-size:12px; color:#666;">billing_yyyymm</label>
-          <input name="billing_yyyymm" class="input" style="width:120px;"
+        <form method="get" th:action="${filterAction} ?: '/'" class="header__filter">
+          <label class="label">billing_yyyymm</label>
+          <input name="billing_yyyymm" class="input w-120"
                  placeholder="예: 202601"
                  th:value="${billing_yyyymm}">
-          <button type="submit" class="btn" style="background:#fff; border:1px solid #ddd; color:#333;">Apply</button>
+          <button type="submit" class="btn btn--ghost">Apply</button>
         </form>
       </div>
     </header>
