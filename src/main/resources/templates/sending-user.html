@@ -20,11 +20,11 @@
         <div class="filterbar__row">
           <div class="field">
             <label class="label">YYYYMM</label>
-            <input name="billing_yyyymm" class="input" style="width:140px;" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
+            <input name="billing_yyyymm" class="input w-140" th:value="${billing_yyyymm}" placeholder="예: 202601"/>
           </div>
           <div class="field">
             <label class="label">Users ID</label>
-            <input name="users_id" class="input" style="width:140px;" th:value="${users_id}" placeholder="예: 10001"/>
+            <input name="users_id" class="input w-140" th:value="${users_id}" placeholder="예: 10001"/>
           </div>
           <div class="field field--actions">
             <button class="btn btn--primary" type="submit">조회</button>
@@ -62,13 +62,13 @@
             <td th:text="${r.lastAttemptAt()}">-</td>
             <td th:text="${r.createdAt()}">-</td>
             <td class="ta-center">
-              <a class="btn btn--ghost"
+              <a class="btn btn--ghost btn--small"
                  th:href="@{/sending/user(billing_yyyymm=${billing_yyyymm}, users_id=${users_id}, invoice_id=${r.invoiceId()})}">
                 이력
               </a>
             </td>
             <td class="ta-center">
-              <a class="btn btn--ghost"
+              <a class="btn btn--ghost btn--small"
                  th:href="@{/sending/resend-user(billing_yyyymm=${billing_yyyymm}, users_id=${users_id})}">
                 재전송
               </a>
@@ -82,7 +82,7 @@
   </div>
 
   <!-- History Panel -->
-  <div class="panel" th:if="${selectedInvoiceId != null}" style="margin-top:20px;">
+  <div class="panel mt-20" th:if="${selectedInvoiceId != null}">
     <div class="panel__head">
       <h2 class="panel__title">
         Delivery History (invoiceId=<span th:text="${selectedInvoiceId}">-</span>)
