@@ -10,6 +10,7 @@ import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementFail
 import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementStatusHistoryRepository;
 import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementStatusRepository;
 import com.mycom.myapp.sendapp.batch.repository.subscribe.SubscribeBillingHistoryRepository;
+import com.mycom.myapp.sendapp.batch.support.ChunkHeaderBuffer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -17,6 +18,7 @@ import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Component;
+import org.springframework.batch.core.scope.context.StepSynchronizationManager;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
@@ -52,6 +54,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
     private final InvoiceSettlementFailureRepository failureRepository;
     private final InvoiceSettlementStatusRepository settlementStatusRepository;
     private final InvoiceSettlementStatusHistoryRepository settlementStatusHistoryRepository;
+    private final ChunkHeaderBuffer chunkHeaderBuffer;
 
     @Value("#{jobParameters['targetYyyymm']}")
     private Integer targetYyyymm;
@@ -181,6 +184,16 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
         // 7) 헤더 최종 합계/성공여부 반영 update
         //    - 구독/단건 처리에서 header dto의 totals를 누적해둔 값을 반영
         monthlyInvoiceRepository.batchUpdateTotals(new ArrayList<>(headerByUserId.values()));
+
+        // 8) 커밋 이후(ChunkListener)에서 Redis 전달할 수 있도록, 성공 헤더 리스트를 인메모리 버퍼에 저장
+        var stepCtx = StepSynchronizationManager.getContext();
+        if (stepCtx != null) {
+            Long stepExecutionId = stepCtx.getStepExecution().getId();
+            List<MonthlyInvoiceRowDto> successHeaders = headerByUserId.values().stream()
+                    .filter(h -> Boolean.TRUE.equals(h.getSettlementSuccess()))
+                    .toList();
+            chunkHeaderBuffer.put(stepExecutionId, successHeaders);
+        }
     }
 
     private void writeSubscribeDetails(

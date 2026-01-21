@@ -2,6 +2,8 @@ package com.mycom.myapp.sendapp.batch.listener;
 
 import com.mycom.myapp.sendapp.batch.repository.attempt.ChunkSettlementResultDto;
 import com.mycom.myapp.sendapp.batch.repository.attempt.MonthlyInvoiceBatchAttemptRepository;
+import com.mycom.myapp.sendapp.batch.support.ChunkHeaderBuffer;
+import com.mycom.myapp.sendapp.delivery.service.DeliveryLoaderService;
 import net.ttddyy.dsproxy.QueryCount;
 import net.ttddyy.dsproxy.QueryCountHolder;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,8 @@ public class MonthlyInvoiceAttemptListener extends ChunkListenerSupport implemen
     private static final String CTX_LAST_WRITE_COUNT = "attemptListener.lastWriteCount";
 
     private final MonthlyInvoiceBatchAttemptRepository attemptRepository;
+    private final ChunkHeaderBuffer chunkHeaderBuffer;
+    private final DeliveryLoaderService deliveryLoaderService;
 
     @Override
     public void afterChunk(ChunkContext context) {
@@ -39,6 +43,12 @@ public class MonthlyInvoiceAttemptListener extends ChunkListenerSupport implemen
         Long attemptId = getAttemptId(stepExecution.getJobExecution());
         if (attemptId == null) {
             return; // Step0에서 attempt_id를 못 넣었으면 건너뜀
+        }
+
+        // Writer가 메모리 버퍼에 넣어둔 성공 헤더 리스트를 꺼내 DeliveryLoaderService로 전달
+        var headers = chunkHeaderBuffer.poll(stepExecution.getId());
+        if (headers != null && !headers.isEmpty()) {
+            deliveryLoaderService.loadChunk(headers);
         }
 
         // writeCount는 Step 누적 값이므로, 직전 값과의 차이를 이번 청크 성공 건수로 본다.
@@ -96,4 +106,5 @@ public class MonthlyInvoiceAttemptListener extends ChunkListenerSupport implemen
         }
         return null;
     }
+
 }
