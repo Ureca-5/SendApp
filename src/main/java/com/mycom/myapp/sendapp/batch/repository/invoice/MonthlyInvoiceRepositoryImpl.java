@@ -26,7 +26,7 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
                     Long usersId = rs.getLong("users_id");
                     if (rs.wasNull()) usersId = null;
 
-                    Long invoiceId = rs.getLong("monthly_invoice_id");
+                    Long invoiceId = rs.getLong("invoice_id");
                     if (rs.wasNull()) invoiceId = null;
 
                     return MonthlyInvoiceRowDto.builder()
@@ -43,7 +43,7 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
         }
 
         // 컬럼명은 실제 스키마에 맞게 조정하세요.
-        // (예: PK 컬럼이 monthly_invoice_id, totals 컬럼명이 다르면 수정)
+        // (예: PK 컬럼이 invoice_id, totals 컬럼명이 다르면 수정)
         String sql = """
             INSERT INTO monthly_invoice (
                   users_id,
@@ -55,10 +55,8 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
                   total_amount,
                   due_date,
                   created_at,
-                  expired_at,
-                  settlement_success
+                  expired_at
             ) VALUES (
-                  ?,
                   ?,
                   ?,
                   ?,
@@ -107,10 +105,6 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
                     ps.setObject(10, null);
                 }
 
-                // settlement_success: 기본 true(정산 성공 가정)로 시작
-                // processor에서 미리 true로 채워도 되고, 여기서 강제해도 됨
-                Boolean success = h.getSettlementSuccess();
-                ps.setBoolean(11, success != null ? success : true);
             }
 
             @Override
@@ -132,11 +126,10 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
 
         String inClause = String.join(",", usersIds.stream().map(u -> "?").toArray(String[]::new));
 
-        // PK 컬럼명이 monthly_invoice_id 라고 가정
         String sql = String.format("""
             SELECT
                   users_id,
-                  monthly_invoice_id
+                  invoice_id
             FROM monthly_invoice
             WHERE users_id IN (%s)
               AND billing_yyyymm = ?
@@ -157,7 +150,7 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
             return new int[0];
         }
 
-        // invoice_id(PK) 기준으로 totals 및 settlement_success 갱신
+        // invoice_id(PK) 기준으로 totals 갱신
         String sql = """
             UPDATE monthly_invoice
             SET
@@ -165,9 +158,8 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
                   total_addon_amount = ?,
                   total_etc_amount = ?,
                   total_discount_amount = ?,
-                  total_amount = ?,
-                  settlement_success = ?
-            WHERE monthly_invoice_id = ?
+                  total_amount = ?
+            WHERE invoice_id = ?
             """;
 
         return jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
@@ -185,10 +177,7 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
                 ps.setLong(4, defaultLong(h.getTotalDiscountAmount()));
                 ps.setLong(5, defaultLong(h.getTotalAmount()));
 
-                Boolean success = h.getSettlementSuccess();
-                ps.setBoolean(6, success != null ? success : true);
-
-                ps.setLong(7, h.getInvoiceId());
+                ps.setLong(6, h.getInvoiceId());
             }
 
             @Override

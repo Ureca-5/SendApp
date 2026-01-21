@@ -25,17 +25,19 @@ public class SubscribeBillingHistoryRepositoryImpl implements SubscribeBillingHi
 
         String sql = String.format("""
             SELECT
-                  subscribe_billing_history_id,
-                  users_id,
-                  device_id,
-                  subscribe_service_id,
-                  service_name,
-                  subscription_start_date,
-                  origin_amount,
-                  discount_amount,
-                  total_amount,
-                  billing_yyyymm
-            FROM subscribe_billing_history
+                  sbh.subscribe_billing_history_id,
+                  sbh.users_id,
+                  sbh.device_id,
+                  sbh.subscribe_service_id,
+                  sbh.service_name,
+                  sbh.subscription_start_date,
+                  sbh.origin_amount,
+                  sbh.discount_amount,
+                  sbh.total_amount,
+                  sbh.billing_yyyymm,
+                  ss.subscribe_service_category_id
+            FROM subscribe_billing_history sbh
+            JOIN subscribe_service ss ON sbh.subscribe_service_id = ss.subscribe_service_id
             WHERE users_id IN (%s)
               AND billing_yyyymm = ?
             ORDER BY users_id ASC, billing_yyyymm ASC, device_id ASC
@@ -58,6 +60,7 @@ public class SubscribeBillingHistoryRepositoryImpl implements SubscribeBillingHi
                 .discountAmount(rs.getLong("discount_amount"))
                 .totalAmount(rs.getLong("total_amount"))
                 .billingYyyymm(rs.getInt("billing_yyyymm"))
+                .subscribeCategoryId(rs.getInt("subscribe_service_category_id"))
                 .build(), args);
     }
 }

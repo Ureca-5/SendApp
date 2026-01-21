@@ -14,6 +14,7 @@ public class SubscribeBillingHistoryRowDto {
     private Long usersId;
     private Long deviceId;
     private Integer subscribeServiceId;
+    private Integer subscribeCategoryId;
     private String serviceName;
     private LocalDate subscriptionStartDate;
     private Long originAmount;

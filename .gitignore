@@ -5,6 +5,7 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 /src/main/resources/docker/data/
+/logs/**
 
 # Environment variables
 # 해당 목록은 절대로 수정하지 마세요.
