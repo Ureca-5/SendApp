@@ -58,8 +58,10 @@ public class MonthlyInvoiceBatchScheduler {
     /**
      * 테스트 원천 데이터(2025년 10월) 정산 배치 수행 메서드(테스트용)
      */
-    public void testMonthlyInvoiceBatch() {
-        Integer targetYyyymm = 202510;
+    public void testMonthlyInvoiceBatch(Integer targetYyyymm) {
+        if(targetYyyymm == null || targetYyyymm <= 0) {
+            throw new IllegalArgumentException("정산 배치 테스트할 년월 정보를 올바르게 입력해주세요.");
+        }
 
         log.info("Scheduled Monthly Invoice Batch Start. targetYyyymm={}", targetYyyymm);
 

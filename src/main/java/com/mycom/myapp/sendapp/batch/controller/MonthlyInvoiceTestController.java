@@ -2,6 +2,7 @@ package com.mycom.myapp.sendapp.batch.controller;
 
 import com.mycom.myapp.sendapp.batch.scheduler.MonthlyInvoiceBatchScheduler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,9 +19,9 @@ public class MonthlyInvoiceTestController {
         monthlyInvoiceBatchScheduler.scheduleMonthlyInvoiceBatch();
     }
 
-    @PostMapping("/test")
-    public void test() {
+    @PostMapping("/test/{targetYyyymm}")
+    public void test(@PathVariable Integer targetYyyymm) {
         // 2025년 10월 데이터 대상으로 테스트 정산 배치 수행 api
-        monthlyInvoiceBatchScheduler.testMonthlyInvoiceBatch();
+        monthlyInvoiceBatchScheduler.testMonthlyInvoiceBatch(targetYyyymm);
     }
 }
