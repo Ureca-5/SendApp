@@ -18,11 +18,8 @@ import java.util.Collections;
 public class RedisStreamBatchConfig {
 
     private final StringRedisTemplate redisTemplate;
+    
 
-    /**
-     * 리스너 컨테이너(Push 방식) 대신 사용.
-     * 애플리케이션 시작 시 스트림과 소비자 그룹을 생성하여 배치 워커가 활동할 기반을 만듭니다.
-     */
     @Bean
     public ApplicationRunner initializeStreamAndGroup() {
         return args -> {
@@ -32,8 +29,17 @@ public class RedisStreamBatchConfig {
                 log.info(">>> [{}] 소비자 그룹이 생성되었습니다. (Target: {})", GROUP_NAME, WAITING_STREAM);
 
             } catch (Exception e) {
-                // BusyGroupException 등 이미 그룹이 존재하는 경우 무시합니다.
-                log.info(">>> 소비자 그룹이 이미 존재하거나 스트림이 준비되었습니다.");
+                String message = e.getMessage();
+                if (message != null && message.contains("BUSYGROUP")) {
+                    log.info(">>> 소비자 그룹이 이미 존재합니다.");
+                } else if (message != null && message.contains("NOKEY")) {
+                    // 스트림 키가 없어서 발생한 경우, 더미 데이터를 하나 넣어서 스트림을 강제 생성하고 그룹을 만듭니다.
+                    log.info(">>> 스트림이 없어 강제 생성 후 그룹을 설정합니다.");
+                    redisTemplate.opsForStream().add(WAITING_STREAM, Collections.singletonMap("status", "init"));
+                    redisTemplate.opsForStream().createGroup(WAITING_STREAM, ReadOffset.from("0-0"), GROUP_NAME);
+                } else {
+                    log.warn(">>> 소비자 그룹 초기화 중 알 수 없는 상태: {}", message);
+                }
             }
         };
     }

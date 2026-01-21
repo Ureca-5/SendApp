@@ -151,6 +151,8 @@ public class DeliveryStatusRepository {
                 return results.size();
             }
         });
+    }
+    
     // ==========================================
     // 5️⃣ [Scheduler용] 재발송 대상 조회 (JOIN 쿼리)
     // ==========================================
