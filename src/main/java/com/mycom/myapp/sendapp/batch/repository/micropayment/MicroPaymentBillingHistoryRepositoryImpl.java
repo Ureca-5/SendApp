@@ -8,7 +8,6 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -50,8 +49,6 @@ public class MicroPaymentBillingHistoryRepositoryImpl implements MicroPaymentBil
                   origin_amount,
                   discount_amount,
                   total_amount,
-                  usage_start_date,
-                  usage_end_date,
                   created_at
             FROM micro_payment_billing_history
             WHERE users_id IN (%s)

@@ -11,6 +11,7 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.database.JdbcPagingItemReader;
+import com.mycom.myapp.sendapp.batch.dto.UserBillingDayDto;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,7 +34,7 @@ public class MonthlyInvoiceBatchJobConfig {
 
     // Step1 components
     // 이미 SettlementTargetUserReaderConfig에서 @Bean으로 제공한 reader를 주입받습니다.
-    private final JdbcPagingItemReader<Long> settlementTargetUserIdReader;
+    private final JdbcPagingItemReader<UserBillingDayDto> settlementTargetUserIdReader;
     private final InvoiceSettlementProcessor invoiceSettlementProcessor;
     private final MonthlyInvoiceWriter monthlyInvoiceWriter;
 
@@ -68,7 +69,7 @@ public class MonthlyInvoiceBatchJobConfig {
     @Bean
     public Step step1SettlementChunk() {
         return new StepBuilder("step1SettlementChunk", jobRepository)
-                .<Long, MonthlyInvoiceRowDto>chunk(CHUNK_SIZE, transactionManager)
+                .<com.mycom.myapp.sendapp.batch.dto.UserBillingDayDto, MonthlyInvoiceRowDto>chunk(CHUNK_SIZE, transactionManager)
                 .reader(settlementTargetUserIdReader)
                 .processor(invoiceSettlementProcessor)
                 .writer(monthlyInvoiceWriter)
