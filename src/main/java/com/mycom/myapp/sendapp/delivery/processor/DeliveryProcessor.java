@@ -45,14 +45,16 @@ public class DeliveryProcessor {
         try {
         	String rawName = payload.get("recipient_name");
             String maskedName = protector.maskedName(rawName); 
+
+            String email = payload.get("email");
+            String phone = payload.get("phone");
             
-//            String encryptedInfo = payload.get("receiver_info"); 
-//            String plainEmail = protector.plainEmail(EncryptedString.of(encryptedInfo));
-//            String plainPhone = protector.plainPhone(EncryptedString.of(encryptedInfo));
+            String maskedEmail = protector.maskedEmail(EncryptedString.of(email));
+            String maskedPhone = protector.maskedPhone(EncryptedString.of(phone));
             
             // 템플릿 사용
-//            String htmlContent = templateRenderer.render(payload, maskedName, plainEmail, plainPhone);
-            String htmlContent = templateRenderer.render(payload, maskedName, payload.get("receiver_info"), payload.get("receiver_info"));
+            String htmlContent = templateRenderer.render(payload, maskedName, maskedEmail, maskedPhone);
+//            String htmlContent = templateRenderer.render(payload, maskedName, payload.get("receiver_info"), payload.get("receiver_info"));
             
             // 테스트를 위해 100건만 파일 저장(추후 주석처리 예정)
             String fileName = "NOT_SAVED";
@@ -67,13 +69,15 @@ public class DeliveryProcessor {
             if (isSuccess) {
                 idempotencyGuard.markAsSent(invoiceId); // Redis 완료 마킹
             }
-
+            
+            String finalReceiver = "EMAIL".equals(channel) ? email : phone;
+            
             return ProcessResult.builder()
                     .invoiceId(invoiceId)
                     .channel(channel)
                     .attemptNo(currentAttemptNo)
                     .status(isSuccess ? "SENT" : "FAILED")
-                    .receiverInfo(payload.get("receiver_info"))
+                    .receiverInfo(finalReceiver)
                     .skipped(false)
                     .build();
 

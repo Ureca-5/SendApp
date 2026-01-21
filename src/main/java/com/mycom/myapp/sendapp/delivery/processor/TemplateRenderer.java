@@ -22,8 +22,8 @@ public class TemplateRenderer {
      * 데이터를 받아 HTML 문자열로 렌더링
      */
     public String render(Map<String, String> payload, String maskedName, String email, String phone) {
-    	log.info("[Render Data Check] ID: {}, Name: {}, Email: {}", 
-                payload.get("invoice_id"), maskedName, email);
+//    	log.info("[Render Data Check] ID: {}, Name: {}, Email: {}", 
+//                payload.get("invoice_id"), maskedName, email);
     	
         Context context = new Context();
         
