@@ -2,257 +2,428 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout :: layout(~{::#content})}">
 <body>
-
-<section id="content">
-  <div class="panel">
-
-    <div class="panel__head">
-      <h2 class="panel__title">청구서 발행 내역 (Bills)</h2>
-      <div class="panel__meta">
-        <span class="chip">Total: <strong th:text="${total}">0</strong></span>
+<section id="content" th:with="pageTitle='BILLS', activeMenu='bills'">
+      <!-- Page head -->
+      <div class="pagehead">
+        <div>
+          <div class="pagehead__sub">
+            월별 정산 배치 결과와 생성된 청구서를 조회합니다. 탭별로 attempt → invoice → fail/history로 drill-down 합니다.
+          </div>
+        </div>
+        <div class="pagehead__right panel__meta">
+          <span class="chip chip--neutral" id="js-current-tab">TAB: <strong>-</strong></span>
+          <span class="chip chip--neutral">YYYYMM: <strong th:text="${target_yyyymm != null ? target_yyyymm : '202601'}">202601</strong></span>
+          <span class="chip chip--neutral">attempt_id: <strong th:text="${attempt_id != null ? attempt_id : '-'}">-</strong></span>
+          <span class="chip chip--neutral">invoice_id: <strong th:text="${invoice_id != null ? invoice_id : '-'}">-</strong></span>
+        </div>
       </div>
-    </div>
 
-    <div class="panel__body">
-
-      <!-- 검색 -->
-      <form class="filterbar" method="get" th:action="@{/bills}">
-        <input type="hidden" name="page" value="0"/>
-
+      <!-- Filter Bar -->
+      <form class="filterbar" th:action="@{/bills}" method="get">
         <div class="filterbar__row">
           <div class="field">
-            <label class="label">YYYYMM</label>
-            <input name="billing_yyyymm" class="input w-140" placeholder="예: 202601"
-                   th:value="${billing_yyyymm}"/>
+            <div class="label">Billing YYYYMM</div>
+            <input class="input w-140" type="text" name="target_yyyymm" placeholder="202601"
+                   th:value="${target_yyyymm}" />
           </div>
 
           <div class="field">
-            <label class="label">Keyword</label>
-            <input name="keyword" class="input w-220" placeholder="User ID or Name"
-                   th:value="${keyword}"/>
+            <div class="label">Attempt ID</div>
+            <input class="input w-160" type="text" name="attempt_id" placeholder="1000001"
+                   th:value="${attempt_id}" />
           </div>
 
           <div class="field">
-            <label class="label">Invoice ID</label>
-            <input name="invoice_id" class="input w-180" placeholder="예: 5000123"
-                   th:value="${invoice_id}"/>
+            <div class="label">Invoice ID</div>
+            <input class="input w-160" type="text" name="invoice_id" placeholder="2000001"
+                   th:value="${invoice_id}" />
           </div>
 
           <div class="field">
-            <label class="label">Size</label>
-            <select name="size" class="select w-90">
-              <option th:selected="${size==20}" th:value="20">20</option>
-              <option th:selected="${size==50}" th:value="50">50</option>
-              <option th:selected="${size==100}" th:value="100">100</option>
-              <option th:selected="${size==200}" th:value="200">200</option>
-            </select>
+            <div class="label">Users ID</div>
+            <input class="input w-140" type="text" name="users_id" placeholder="10001"
+                   th:value="${users_id}" />
           </div>
 
-          <div class="field field--actions">
-            <button class="btn btn--primary" type="submit">Search</button>
-          </div>
+          <input type="hidden" name="tab" th:value="${tab}" />
+
+          <button class="btn btn--primary" type="submit">Apply</button>
+          <a class="btn btn--ghost" th:href="@{/bills(tab=${tab})}" href="bills.html">Reset</a>
+        </div>
+
+        <div class="hint mt-8">
+          <strong>팁:</strong> attempt_id를 선택하면 Failures/History가 그 attempt 기준으로 고정됩니다.
         </div>
       </form>
 
-      <div class="split split--narrow-right">
+      <!-- Main Panel -->
+      <section class="panel">
+        <div class="panel__head">
+          <h2 class="panel__title">Monthly Billing</h2>
+          <div class="panel__meta">
+            <span class="chip chip--neutral">Attempts</span>
+            <span class="chip chip--neutral">Invoices</span>
+            <span class="chip chip--neutral">Failures</span>
+          </div>
+        </div>
 
-        <!-- 리스트 -->
-        <div>
-          <div class="table-wrap">
-            <table class="table bills-table">
-              <thead>
-              <tr>
-                <th width="22%">청구서정보</th>
-                <th width="28%">개인정보</th>
-                <th width="18%" class="ta-right">금액</th>
-                <th width="18%">발행/납부</th>
-                <th width="14%">액션</th>
-              </tr>
-              </thead>
+        <div class="panel__body">
 
-              <tbody>
-              <tr th:if="${#lists.isEmpty(bills)}">
-                <td colspan="5" class="td-muted ta-center">조회 결과가 없습니다.</td>
-              </tr>
+          <!-- Tabs -->
+          <div class="tabs" data-tab-param="tab" data-indicator="#js-current-tab">
+            <a class="tab"
+               th:classappend="${tab == null or tab == 'attempts'} ? ' is-active' : ''"
+               th:href="@{/bills(tab='attempts', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id}, invoice_id=${invoice_id}, users_id=${users_id})}"
+               href="?tab=attempts">
+              Batch Attempts
+            </a>
+            <a class="tab"
+               th:classappend="${tab == 'invoices'} ? ' is-active' : ''"
+               th:href="@{/bills(tab='invoices', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id}, invoice_id=${invoice_id}, users_id=${users_id})}"
+               href="?tab=invoices">
+              Invoices
+            </a>
+            <a class="tab"
+               th:classappend="${tab == 'fails'} ? ' is-active' : ''"
+               th:href="@{/bills(tab='fails', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}"
+               href="?tab=fails">
+              Failures
+            </a>
+            <a class="tab"
+               th:classappend="${tab == 'history'} ? ' is-active' : ''"
+               th:href="@{/bills(tab='history', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}"
+               href="?tab=history">
+              Status History
+            </a>
+          </div>
 
-              <tr th:each="b : ${bills}"
-                  th:classappend="${selectedInvoiceId != null and selectedInvoiceId == b.invoiceId} ? 'is-selected' : ''">
+          <!-- Tab Description (요구사항: 각 탭 설명 텍스트 추가) -->
+          <div class="alert alert--info mb-14">
+            <div>
+              <p class="alert__title"
+                 th:text="${(tab == null or tab == 'attempts') ? 'Batch Attempts — 월별 정산 배치 실행 결과' :
+                            (tab == 'invoices') ? 'Invoices — 생성된 청구서 목록' :
+                            (tab == 'fails') ? 'Failures — 배치 실패 원인 목록' :
+                            'Status History — 정산 상태 변경 이력'}">
+                Batch Attempts — 월별 정산 배치 실행 결과
+              </p>
+              <p class="alert__desc"
+                 th:text="${(tab == null or tab == 'attempts') ? 'monthly_invoice_batch_attempt를 조회합니다. 행 클릭 시 attempt_id가 고정되며, Failures/History 탭이 해당 attempt 기준으로 동작합니다.' :
+                            (tab == 'invoices') ? 'monthly_invoice 목록입니다. 행 클릭 시 invoice_id가 고정되고, 상세 라인아이템(monthly_invoice_detail)을 함께 확인합니다.' :
+                            (tab == 'fails') ? 'monthly_invoice_batch_fail 목록입니다. 선택된 attempt_id 기준이며 error_code/message로 원인을 파악합니다.' :
+                            'settlement_status_history 목록입니다. attempt_id 기준 from→to 변경 이력을 보고 invoice로 이동해 영향 범위를 확인합니다.'}">
+                monthly_invoice_batch_attempt를 조회합니다. 행 클릭 시 attempt_id가 고정되며, Failures/History 탭이 해당 attempt 기준으로 동작합니다.
+              </p>
+            </div>
+            <div class="alert__actions">
+              <a class="btn btn--ghost btn--small" th:href="@{/bills(tab='fails', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}" href="?tab=fails">Go Failures</a>
+              <a class="btn btn--ghost btn--small" th:href="@{/bills(tab='history', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}" href="?tab=history">Go History</a>
+            </div>
+          </div>
 
-                <!-- 청구서정보 -->
-                <td>
-                  <div class="stack">
-                    <a class="bill-title"
-                       th:href="@{/bills(billing_yyyymm=${billing_yyyymm}, keyword=${keyword}, invoice_id=${b.invoiceId}, page=${page}, size=${size})}">
-                      <span th:text="${b.invoiceId}">5000001</span>
+          <!-- Attempts Tab -->
+          <div th:if="${tab == null or tab == 'attempts'}">
+            <div class="split split--narrow-right">
+
+              <div class="panel panel--list">
+                <div class="panel__head">
+                  <h3 class="section-title">Attempts</h3>
+                  <div class="panel__meta">
+                    <span class="chip chip--neutral">click row → select attempt_id</span>
+                  </div>
+                </div>
+
+                <div class="panel__body" style="padding:0">
+                  <div class="table-wrap">
+                    <table class="table">
+                      <thead>
+                      <tr>
+                        <th class="col-md">attempt_id</th>
+                        <th class="col-sm">yyyymm</th>
+                        <th class="col-sm">status</th>
+                        <th class="col-sm">type</th>
+                        <th class="col-sm ta-right">targets</th>
+                        <th class="col-xs ta-right">ok</th>
+                        <th class="col-xs ta-right">fail</th>
+                        <th class="col-md">started</th>
+                        <th class="col-sm ta-right">duration</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      <tr th:each="a : ${attempts}"
+                          th:classappend="${a.attemptId == attempt_id} ? ' is-selected' : ''"
+                          style="cursor:pointer"
+                          th:onclick="|window.location='@{/bills(tab='attempts', target_yyyymm=${target_yyyymm}, attempt_id=${a.attemptId})}'|">
+                        <td th:text="${a.attemptId}">1001</td>
+                        <td th:text="${a.targetYyyymm}">202601</td>
+                        <td>
+                          <span class="chip chip--status"
+                                th:classappend="${a.executionStatus == 'FAILED'} ? ' chip--failed' :
+                                                (${a.endedAt} == null) ? ' chip--pending' :
+                                                ' chip--completed'"
+                                th:text="${a.endedAt == null ? 'RUNNING' : a.executionStatus}">
+                            COMPLETED
+                          </span>
+                        </td>
+                        <td th:text="${a.executionType}">SCHEDULED</td>
+                        <td class="ta-right" th:text="${a.targetCount}">100000</td>
+                        <td class="ta-right" th:text="${a.successCount}">99900</td>
+                        <td class="ta-right" th:text="${a.failCount}">100</td>
+                        <td th:text="${#temporals.format(a.startedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+                        <td class="ta-right" th:text="${a.durationMs != null ? a.durationMs + 'ms' : '-'}">-</td>
+                      </tr>
+
+                      <tr th:if="${attempts == null or #lists.isEmpty(attempts)}">
+                        <td class="td-muted" colspan="9">No attempts</td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right side: selected attempt KPI -->
+              <div class="panel panel--side">
+                <div class="panel__head">
+                  <h3 class="section-title">Selected Attempt</h3>
+                  <div class="panel__meta">
+                    <span class="chip chip--neutral">attempt_id: <strong th:text="${attempt_id != null ? attempt_id : '-'}">-</strong></span>
+                  </div>
+                </div>
+                <div class="panel__body">
+                  <div class="kpi">
+                    <div class="kpi__item">
+                      <div class="kpi__label">Targets</div>
+                      <div class="kpi__value" th:text="${selectedAttempt != null ? selectedAttempt.targetCount : 0}">0</div>
+                    </div>
+                    <div class="kpi__item">
+                      <div class="kpi__label">Success</div>
+                      <div class="kpi__value kpi__value--success" th:text="${selectedAttempt != null ? selectedAttempt.successCount : 0}">0</div>
+                    </div>
+                    <div class="kpi__item">
+                      <div class="kpi__label">Fail</div>
+                      <div class="kpi__value kpi__value--danger" th:text="${selectedAttempt != null ? selectedAttempt.failCount : 0}">0</div>
+                    </div>
+                    <div class="kpi__item">
+                      <div class="kpi__label">Duration</div>
+                      <div class="kpi__value" th:text="${selectedAttempt != null && selectedAttempt.durationMs != null ? selectedAttempt.durationMs + 'ms' : '-'}">-</div>
+                    </div>
+                  </div>
+
+                  <div class="row mt-14">
+                    <a class="btn btn--primary" th:href="@{/bills(tab='fails', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}" href="?tab=fails">Failures</a>
+                    <a class="btn btn--ghost" th:href="@{/bills(tab='history', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}" href="?tab=history">History</a>
+                    <a class="btn btn--quiet" th:href="@{/bills(tab='invoices', target_yyyymm=${target_yyyymm})}" href="?tab=invoices">Go Invoices</a>
+                  </div>
+
+                  <div class="hint mt-12">
+                    <strong>규칙:</strong> attempt_id가 비어 있으면 Failures/History는 의미가 약합니다(기준이 사라짐).
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Invoices Tab -->
+          <div th:if="${tab == 'invoices'}">
+            <div class="split split--narrow-right">
+
+              <div class="panel panel--list">
+                <div class="panel__head">
+                  <h3 class="section-title">Invoices</h3>
+                  <div class="panel__meta">
+                    <span class="chip chip--neutral">click row → select invoice_id</span>
+                  </div>
+                </div>
+
+                <div class="panel__body" style="padding:0">
+                  <div class="table-wrap">
+                    <table class="table bills-table">
+                      <thead>
+                      <tr>
+                        <th class="col-md">invoice_id</th>
+                        <th class="col-sm">users_id</th>
+                        <th class="col-md ta-right">total_amount</th>
+                        <th class="col-md ta-right">discount</th>
+                        <th class="col-md">due_date</th>
+                        <th class="col-md">created_at</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      <tr th:each="inv : ${invoices}"
+                          th:classappend="${inv.invoiceId == invoice_id} ? ' is-selected' : ''"
+                          style="cursor:pointer"
+                          th:onclick="|window.location='@{/bills(tab='invoices', target_yyyymm=${target_yyyymm}, invoice_id=${inv.invoiceId})}'|">
+                        <td th:text="${inv.invoiceId}">2001</td>
+                        <td th:text="${inv.usersId}">10001</td>
+                        <td class="ta-right">
+                          <div class="amount-strong" th:text="${inv.totalAmount}">0</div>
+                        </td>
+                        <td class="ta-right" th:text="${inv.totalDiscountAmount}">0</td>
+                        <td th:text="${inv.dueDate}">2026-02-01</td>
+                        <td th:text="${#temporals.format(inv.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+                      </tr>
+
+                      <tr th:if="${invoices == null or #lists.isEmpty(invoices)}">
+                        <td class="td-muted" colspan="6">No invoices</td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right side: invoice detail -->
+              <div class="panel panel--side">
+                <div class="panel__head">
+                  <h3 class="section-title">Invoice Detail</h3>
+                  <div class="panel__meta">
+                    <span class="chip chip--neutral">invoice_id: <strong th:text="${invoice_id != null ? invoice_id : '-'}">-</strong></span>
+                  </div>
+                </div>
+                <div class="panel__body">
+
+                  <div class="kv">
+                    <div class="kv__key">users_id</div>
+                    <div class="kv__val" th:text="${selectedInvoice != null ? selectedInvoice.usersId : '-'}">-</div>
+
+                    <div class="kv__key">billing_yyyymm</div>
+                    <div class="kv__val" th:text="${selectedInvoice != null ? selectedInvoice.billingYyyymm : '-'}">-</div>
+
+                    <div class="kv__key">total_amount</div>
+                    <div class="kv__val kv__val--strong" th:text="${selectedInvoice != null ? selectedInvoice.totalAmount : 0}">0</div>
+
+                    <div class="kv__key">due_date</div>
+                    <div class="kv__val" th:text="${selectedInvoice != null ? selectedInvoice.dueDate : '-'}">-</div>
+                  </div>
+
+                  <div class="section-head mt-14">
+                    <h4 class="section-title">Line Items</h4>
+                    <div class="hint">monthly_invoice_detail</div>
+                  </div>
+
+                  <div class="table-wrap is-sticky">
+                    <table class="table">
+                      <thead>
+                      <tr>
+                        <th class="col-md">category</th>
+                        <th>service</th>
+                        <th class="col-sm ta-right">total</th>
+                        <th class="col-lg">usage</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      <tr th:each="d : ${invoiceDetails}">
+                        <td th:text="${d.categoryName}">요금제</td>
+                        <td th:text="${d.serviceName}">상품</td>
+                        <td class="ta-right" th:text="${d.totalAmount}">0</td>
+                        <td th:text="${d.usageStartDate + ' ~ ' + d.usageEndDate}">-</td>
+                      </tr>
+                      <tr th:if="${invoiceDetails == null or #lists.isEmpty(invoiceDetails)}">
+                        <td class="td-muted" colspan="4">No line items</td>
+                      </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div class="row mt-14">
+                    <a class="btn btn--ghost" th:href="@{/bills(tab='fails', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}" href="?tab=fails">Failures</a>
+                    <a class="btn btn--ghost" th:href="@{/bills(tab='history', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id})}" href="?tab=history">History</a>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Failures Tab -->
+          <div th:if="${tab == 'fails'}">
+            <div class="section-head">
+              <h3 class="section-title">Failures</h3>
+              <div class="pagehead__right">
+                <a class="btn btn--ghost btn--small"
+                   th:href="@{/bills(tab='fails', target_yyyymm=${target_yyyymm}, attempt_id=${attempt_id}, export='csv')}"
+                   href="#">
+                  Export CSV
+                </a>
+              </div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                <tr>
+                  <th class="col-md">fail_id</th>
+                  <th class="col-md">category</th>
+                  <th class="col-md">billing_history_id</th>
+                  <th class="col-md">error_code</th>
+                  <th>error_message</th>
+                  <th class="col-md">created_at</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="f : ${fails}">
+                  <td th:text="${f.failId}">1</td>
+                  <td th:text="${f.categoryName}">요금제</td>
+                  <td th:text="${f.billingHistoryId}">5001</td>
+                  <td><span class="chip chip--danger" th:text="${f.errorCode}">ERR</span></td>
+                  <td class="truncate" th:text="${f.errorMessage}">message...</td>
+                  <td th:text="${#temporals.format(f.createdAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+                </tr>
+                <tr th:if="${fails == null or #lists.isEmpty(fails)}">
+                  <td class="td-muted" colspan="6">No failures</td>
+                </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- History Tab -->
+          <div th:if="${tab == 'history'}">
+            <div class="section-head">
+              <h3 class="section-title">Settlement Status History</h3>
+              <div class="hint">attempt_id 기준</div>
+            </div>
+
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                <tr>
+                  <th class="col-md">changed_at</th>
+                  <th class="col-md">invoice_id</th>
+                  <th class="col-sm">from</th>
+                  <th class="col-sm">to</th>
+                  <th class="col-md">reason_code</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="h : ${statusHistory}">
+                  <td th:text="${#temporals.format(h.changedAt, 'yyyy-MM-dd HH:mm')}">2026-01-01 00:00</td>
+                  <td>
+                    <a class="link"
+                       th:href="@{/bills(tab='invoices', target_yyyymm=${target_yyyymm}, invoice_id=${h.invoiceId})}"
+                       th:text="${h.invoiceId}">
+                      2001
                     </a>
-                    <div class="bill-meta">
-                      <span th:text="${b.billingMonthText}">2026-01</span>
-                      <span class="dot">·</span>
-                      <span>User:</span>
-                      <span th:text="${b.usersId}">10001</span>
-                    </div>
-                  </div>
-                </td>
-
-                <!-- 개인정보 -->
-                <td>
-                  <div class="stack">
-                    <div class="bill-title" th:text="${b.userNameMasked}">홍*동</div>
-                    <div class="bill-meta">
-                      <span th:text="${b.userPhoneMasked}">010-****-1234</span>
-                    </div>
-                  </div>
-                </td>
-
-                <!-- 금액 -->
-                <td class="ta-right">
-                  <div class="stack stack--end">
-                    <div class="amount-strong" th:text="${b.totalAmountText}">44,100</div>
-                    <div class="amount-sub">
-                      <span>요금제</span> <span th:text="${b.planAmountText}">45,000</span>
-                      <span class="dot">·</span>
-                      <span>부가</span> <span th:text="${b.addonAmountText}">0</span>
-                      <span class="dot">·</span>
-                      <span>기타</span> <span th:text="${b.etcAmountText}">0</span>
-                      <span class="dot">·</span>
-                      <span>할인</span> <span th:text="${b.discountAmountText}">-900</span>
-                    </div>
-                  </div>
-                </td>
-
-                <!-- 발행/납부 -->
-                <td>
-                  <div class="stack">
-                    <div class="bill-meta">발행</div>
-                    <div class="bill-title" th:text="${b.createdAtText}">2026-01-01 00:00</div>
-                    <div class="bill-meta mt-8">납부기한</div>
-                    <div class="bill-title" th:text="${b.dueDateText}">2026-01-20</div>
-                  </div>
-                </td>
-
-                <!-- 액션 -->
-                <td>
-                  <div class="actions-vert">
-                    <a class="btn btn--small"
-                       th:href="@{/bills/preview/email(invoice_id=${b.invoiceId})}">Email</a>
-                    <a class="btn btn--small"
-                       th:href="@{/bills/preview/sms(invoice_id=${b.invoiceId})}">SMS</a>
-                    <a class="btn btn--small"
-                       th:href="@{/sending(invoice_id=${b.invoiceId}, billing_yyyymm=${billing_yyyymm})}">Sending</a>
-                  </div>
-                </td>
-
-              </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- 페이저 -->
-          <div class="pager mt-20">
-            <div class="pager__left">
-              Page <strong th:text="${page + 1}">1</strong>
-              / <span th:text="${totalPages == 0 ? 1 : totalPages}">1</span>
-            </div>
-
-            <div class="pager__right">
-              <a class="btn btn--ghost"
-                 th:classappend="${page <= 0} ? ' is-disabled' : ''"
-                 th:href="@{/bills(page=${page-1}, size=${size}, keyword=${keyword}, billing_yyyymm=${billing_yyyymm}, invoice_id=${invoice_id})}">
-                Prev
-              </a>
-
-              <a class="btn btn--ghost"
-                 th:classappend="${page >= totalPages-1} ? ' is-disabled' : ''"
-                 th:href="@{/bills(page=${page+1}, size=${size}, keyword=${keyword}, billing_yyyymm=${billing_yyyymm}, invoice_id=${invoice_id})}">
-                Next
-              </a>
+                  </td>
+                  <td><span class="chip chip--neutral" th:text="${h.fromStatus}">NONE</span></td>
+                  <td><span class="chip chip--success" th:text="${h.toStatus}">COMPLETED</span></td>
+                  <td class="truncate" th:text="${h.reasonCode}">-</td>
+                </tr>
+                <tr th:if="${statusHistory == null or #lists.isEmpty(statusHistory)}">
+                  <td class="td-muted" colspan="5">No history</td>
+                </tr>
+                </tbody>
+              </table>
             </div>
           </div>
+
         </div>
-
-        <!-- 선택 상세 패널 -->
-        <div class="panel panel--side">
-          <div class="panel__head">
-            <h3 class="panel__title">선택 상세</h3>
-            <div class="panel__meta">
-              <a class="btn btn--ghost btn--small"
-                 th:href="@{/bills(billing_yyyymm=${billing_yyyymm}, keyword=${keyword}, page=${page}, size=${size})}">
-                선택 해제
-              </a>
-            </div>
-          </div>
-
-          <div class="panel__body">
-            <div th:if="${selectedBill == null}" class="empty">
-              <div class="empty__desc">
-                좌측 목록에서 <strong>Invoice ID</strong>를 클릭하면,
-                청구서정보/개인정보/금액/발행날짜/액션을 여기서 확인할 수 있습니다.
-              </div>
-            </div>
-
-            <div th:if="${selectedBill != null}">
-              <!-- 청구서정보 -->
-              <div class="mt-12">
-                <div class="bill-meta mb-14">청구서정보</div>
-                <div class="kv">
-                  <div class="kv__key">Invoice ID</div><div th:text="${selectedBill.invoiceId}">-</div>
-                  <div class="kv__key">User ID</div><div th:text="${selectedBill.usersId}">-</div>
-                  <div class="kv__key">Billing</div><div th:text="${selectedBill.billingMonthText}">-</div>
-                  <div class="kv__key">Due</div><div th:text="${selectedBill.dueDateText}">-</div>
-                </div>
-              </div>
-
-              <!-- 개인정보 -->
-              <div class="mt-20">
-                <div class="bill-meta mb-14">개인정보</div>
-                <div class="kv">
-                  <div class="kv__key">Name</div><div th:text="${selectedBill.userNameMasked}">-</div>
-                  <div class="kv__key">Phone</div><div th:text="${selectedBill.userPhoneMasked}">-</div>
-                </div>
-              </div>
-
-              <!-- 금액 -->
-              <div class="mt-20">
-                <div class="bill-meta mb-14">금액</div>
-                <div class="kv">
-                  <div class="kv__key">요금제</div><div th:text="${selectedBill.planAmountText}">-</div>
-                  <div class="kv__key">부가</div><div th:text="${selectedBill.addonAmountText}">-</div>
-                  <div class="kv__key">기타</div><div th:text="${selectedBill.etcAmountText}">-</div>
-                  <div class="kv__key">할인</div><div th:text="${selectedBill.discountAmountText}">-</div>
-                  <div class="kv__key kv__val--strong">Total</div>
-                  <div class="kv__val--strong" th:text="${selectedBill.totalAmountText}">-</div>
-                </div>
-              </div>
-
-              <!-- 발행날짜 -->
-              <div class="mt-20">
-                <div class="bill-meta mb-14">발행날짜</div>
-                <div class="kv">
-                  <div class="kv__key">Created</div><div th:text="${selectedBill.createdAtText}">-</div>
-                </div>
-              </div>
-
-              <!-- 액션 -->
-              <div class="mt-20">
-                <div class="bill-meta mb-14">액션</div>
-                <div class="row">
-                  <a class="btn btn--primary btn--small"
-                     th:href="@{/bills/preview/email(invoice_id=${selectedBill.invoiceId})}">Email 프리뷰</a>
-                  <a class="btn btn--primary btn--small"
-                     th:href="@{/bills/preview/sms(invoice_id=${selectedBill.invoiceId})}">SMS 프리뷰</a>
-                  <a class="btn btn--ghost btn--small"
-                     th:href="@{/sending(invoice_id=${selectedBill.invoiceId}, billing_yyyymm=${billing_yyyymm})}">Sending 이동</a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
+      </section>
 
     </div>
-  </div>
-</section>
 
+    
+</section>
 </body>
 </html>

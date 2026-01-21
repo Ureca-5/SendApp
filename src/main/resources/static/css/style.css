@@ -741,3 +741,21 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 @media (max-width: 1100px) { .split--narrow-right { grid-template-columns: 1fr; } }
 
 .user-name { font-weight: 800; color: var(--text-main); }
+
+
+/* Bills list panel */
+.panel--list { border: 1px solid var(--border); }
+
+/* ===== Dashboard add-ons (v2.1) ===== */
+.metric { margin-top: 12px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+.metric__row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.metric__row:last-child { border-bottom: 0; }
+.metric__label { color: var(--text-muted); font-size: 13px; }
+.metric__value { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+.metric__value--danger { color: var(--danger); }
+.truncate { max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+@media (max-width: 960px) {
+  .split { grid-template-columns: 1fr; }
+  .truncate { max-width: 240px; }
+}
