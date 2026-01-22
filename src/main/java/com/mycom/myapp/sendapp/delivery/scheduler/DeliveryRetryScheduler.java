@@ -48,7 +48,8 @@ public class DeliveryRetryScheduler {
                 fieldMap.put("delivery_channel", dto.getDeliveryChannel());
                 // 로그 확인용으로 +1 된 값을 Redis에 보냄
                 fieldMap.put("retry_count", String.valueOf(dto.getRetryCount() + 1)); 
-                
+                fieldMap.put("email", dto.getEmail());
+                fieldMap.put("phone", dto.getPhone());
                 fieldMap.put("billing_yyyymm", dto.getBillingYyyymm());
                 fieldMap.put("recipient_name", dto.getRecipientName());
                 fieldMap.put("receiver_info", dto.getReceiverInfo());
@@ -90,7 +91,8 @@ public class DeliveryRetryScheduler {
                 
                 // 로그 확인용: "SMS 1회차"라고 보이게 1을 넣음 (DB는 0으로 초기화됨)
                 fieldMap.put("retry_count", "1"); 
-                
+                fieldMap.put("email", dto.getEmail());
+                fieldMap.put("phone", dto.getPhone());
                 fieldMap.put("billing_yyyymm", dto.getBillingYyyymm());
                 fieldMap.put("recipient_name", dto.getRecipientName());
                 fieldMap.put("receiver_info", dto.getReceiverInfo()); // 폰번호 (010-xxxx)
