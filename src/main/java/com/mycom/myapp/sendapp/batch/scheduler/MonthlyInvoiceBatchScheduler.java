@@ -7,6 +7,7 @@ import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.time.LocalDate;
 public class MonthlyInvoiceBatchScheduler {
     private final JobLauncher jobLauncher;
     private final Job monthlyInvoiceSettlementJob;
+    private final JdbcTemplate jdbcTemplate; // 테스트 배치 시작 전, 대상 년월의 정산 관련 데이터 모두 제거
 
     /**
      * 정산 대상 년월 파라미터를 생성
@@ -62,8 +64,20 @@ public class MonthlyInvoiceBatchScheduler {
         if(targetYyyymm == null || targetYyyymm <= 0) {
             throw new IllegalArgumentException("정산 배치 테스트할 년월 정보를 올바르게 입력해주세요.");
         }
-
         log.info("Scheduled Monthly Invoice Batch Start. targetYyyymm={}", targetYyyymm);
+
+        // 테스트 배치 수행 전 대상 년월에 해당하는 정산 결과 관련 데이터를 모두 제거
+        String[] preBatchSqlArray = {
+                "set foreign_key_checks = 0",
+                "delete from monthly_invoice_batch_attempt",
+                "truncate monthly_invoice_batch_fail",
+                "truncate settlement_status_history",
+                "truncate settlement_status",
+                "truncate monthly_invoice_detail",
+                "truncate monthly_invoice",
+                "set foreign_key_checks = 1"
+        };
+        jdbcTemplate.batchUpdate(preBatchSqlArray);
 
         JobParameters params = new JobParametersBuilder()
                 .addString("targetYyyymm", targetYyyymm.toString())
