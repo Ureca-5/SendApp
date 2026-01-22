@@ -1,5 +1,6 @@
 package com.mycom.myapp.sendapp.delivery.processor;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -7,7 +8,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.springframework.stereotype.Component;
 
 import com.mycom.myapp.sendapp.delivery.dto.ProcessResult;
-import com.mycom.myapp.sendapp.delivery.service.DeliveryBatchWorker;
 import com.mycom.myapp.sendapp.delivery.worker.util.IdempotencyGuard;
 import com.mycom.myapp.sendapp.global.crypto.ContactProtector;
 import com.mycom.myapp.sendapp.global.crypto.EncryptedString;
@@ -33,13 +33,18 @@ public class DeliveryProcessor {
             return null; 
         }
     	
+    	String reqAtStr = payload.get("requested_at");
+        LocalDateTime requestedAt = (reqAtStr != null) 
+                                    ? LocalDateTime.parse(reqAtStr) 
+                                    : LocalDateTime.now();
+    	
     	Long invoiceId = Long.valueOf(payload.get("invoice_id"));
         String channel = payload.get("delivery_channel");
         int currentAttemptNo = Integer.parseInt(payload.getOrDefault("retry_count", "0")) + 1;
         
         
         if (idempotencyGuard.isAlreadySent(invoiceId)) {
-            return ProcessResult.skipped(invoiceId, channel, currentAttemptNo);
+            return ProcessResult.skipped(invoiceId, channel, currentAttemptNo, requestedAt);
         }
 
         try {
@@ -77,6 +82,7 @@ public class DeliveryProcessor {
                     .channel(channel)
                     .attemptNo(currentAttemptNo)
                     .status(isSuccess ? "SENT" : "FAILED")
+                    .requestedAt(requestedAt)
                     .receiverInfo(finalReceiver)
                     .skipped(false)
                     .build();

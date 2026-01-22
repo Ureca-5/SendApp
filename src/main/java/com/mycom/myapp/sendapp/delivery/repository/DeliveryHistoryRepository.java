@@ -64,7 +64,7 @@ public class DeliveryHistoryRepository {
                 ps.setString(3, r.getChannel());
                 ps.setString(4, r.getStatus());
                 ps.setString(5, r.getReceiverInfo());
-                ps.setTimestamp(6, timestamp); // 발송 요청 시간
+                ps.setTimestamp(6, Timestamp.valueOf(r.getRequestedAt()));
                 ps.setTimestamp(7, timestamp); // 발송 완료 시간 (모킹 완료 시점)
             }
 
