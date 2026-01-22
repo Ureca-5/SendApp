@@ -92,7 +92,7 @@ public class SendingDao {
             Integer bym = (Integer) rs.getObject("billing_yyyymm");
             Long uid = (Long) rs.getObject("users_id");
 
-            // 이름 마스킹(사용자 테이블이 없을 수도 있으니 null 안전)
+            // 이름 마스킹 //USER쪽 조회없는 가상 USERNAME
             String userName = protector.maskedName(rs.getString("user_name"));
 
             String channelVal = rs.getString("delivery_channel"); // snapshot 기준
