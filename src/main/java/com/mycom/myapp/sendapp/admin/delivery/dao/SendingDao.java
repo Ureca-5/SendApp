@@ -1,11 +1,8 @@
 package com.mycom.myapp.sendapp.admin.delivery.dao;
 
+import com.mycom.myapp.sendapp.admin.delivery.dto.DeliverySummaryRowDTO;
 import com.mycom.myapp.sendapp.admin.delivery.dto.SendingHistoryRowDTO;
 import com.mycom.myapp.sendapp.admin.delivery.dto.SendingStatusRowDTO;
-import com.mycom.myapp.sendapp.admin.delivery.dto.SendingStatusSummaryRowDTO;
-import com.mycom.myapp.sendapp.admin.delivery.dto.SendingChannelStatusSummaryRowDTO;
-import com.mycom.myapp.sendapp.admin.delivery.dto.SendingKpiDTO;
-import com.mycom.myapp.sendapp.admin.delivery.dto.SendingRecentHistoryRowDTO;
 import com.mycom.myapp.sendapp.global.crypto.ContactProtector;
 import com.mycom.myapp.sendapp.global.crypto.EncryptedString;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -27,259 +24,112 @@ public class SendingDao {
         this.protector = protector;
     }
 
-    public int count(Integer billingYyyymm, String status, String channel, Long usersId, Long invoiceId) {
+    /** Status 탭: 건수 */
+    public int count(Integer billingYyyymm, String status, String deliveryChannel, Long usersId, Long invoiceId) {
         StringBuilder sql = new StringBuilder("""
             SELECT COUNT(*)
             FROM delivery_status ds
-            JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-            JOIN users u ON mi.users_id = u.users_id
+            LEFT JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
+            LEFT JOIN users u ON mi.users_id = u.users_id
             WHERE 1=1
         """);
         List<Object> args = new ArrayList<>();
-        applyWhere(sql, args, billingYyyymm, status, channel, usersId, invoiceId);
+        applyWhere(sql, args, billingYyyymm, status, deliveryChannel, usersId, invoiceId);
 
         Integer cnt = jdbcTemplate.queryForObject(sql.toString(), Integer.class, args.toArray());
         return cnt == null ? 0 : cnt;
     }
 
-    public List<SendingStatusRowDTO> list(Integer billingYyyymm, String status, String channel, Long usersId, Long invoiceId, int size, int offset) {
+    /** Status 탭: 목록 */
+    public List<SendingStatusRowDTO> list(Integer billingYyyymm, String status, String deliveryChannel,
+                                          Long usersId, Long invoiceId, int size, int offset) {
         StringBuilder sql = new StringBuilder("""
             SELECT
               ds.invoice_id,
               mi.billing_yyyymm,
               mi.users_id,
+              mi.total_amount,
               u.name AS user_name,
               u.phone AS phone_enc,
+              u.email AS email_enc,
+
               ds.status,
               ds.delivery_channel,
               ds.retry_count,
               ds.last_attempt_at,
-              ds.created_at
+              ds.created_at,
+
+              dh_last.receiver_info AS last_receiver_info,
+              dh_last.error_message AS last_error_message
+
             FROM delivery_status ds
-            JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-            JOIN users u ON mi.users_id = u.users_id
+            LEFT JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
+            LEFT JOIN users u ON mi.users_id = u.users_id
+
+            LEFT JOIN (
+                SELECT h1.invoice_id, h1.receiver_info, h1.error_message
+                FROM delivery_history h1
+                JOIN (
+                    SELECT invoice_id, MAX(attempt_no) AS max_attempt
+                    FROM delivery_history
+                    GROUP BY invoice_id
+                ) h2 ON h1.invoice_id = h2.invoice_id AND h1.attempt_no = h2.max_attempt
+            ) dh_last ON ds.invoice_id = dh_last.invoice_id
+
             WHERE 1=1
         """);
         List<Object> args = new ArrayList<>();
-        applyWhere(sql, args, billingYyyymm, status, channel, usersId, invoiceId);
+        applyWhere(sql, args, billingYyyymm, status, deliveryChannel, usersId, invoiceId);
 
         sql.append(" ORDER BY ds.created_at DESC, ds.invoice_id DESC LIMIT ? OFFSET ? ");
         args.add(size);
         args.add(offset);
 
         return jdbcTemplate.query(sql.toString(), (rs, rowNum) -> {
-            Timestamp last = rs.getTimestamp("last_attempt_at");
-            Timestamp created = rs.getTimestamp("created_at");
-            LocalDateTime lastAt = last == null ? null : last.toLocalDateTime();
-            LocalDateTime createdAt = created == null ? null : created.toLocalDateTime();
+            LocalDateTime lastAt = toLdt(rs.getTimestamp("last_attempt_at"));
+            LocalDateTime createdAt = toLdt(rs.getTimestamp("created_at"));
 
-            String nameMasked = protector.maskedName(rs.getString("user_name"));
-            String phoneMasked;
+            Integer bym = (Integer) rs.getObject("billing_yyyymm");
+            Long uid = (Long) rs.getObject("users_id");
+
+            // 이름 마스킹 //USER쪽 조회없는 가상 USERNAME
+            String userName = protector.maskedName(rs.getString("user_name"));
+
+            String channelVal = rs.getString("delivery_channel"); // snapshot 기준
+            String receiverMasked = maskReceiver(
+                    channelVal,
+                    rs.getString("last_receiver_info"),   // 우선: 실제 발송 대상(History 최신)
+                    rs.getString("email_enc"),            // fallback: users.email
+                    rs.getString("phone_enc")             // fallback: users.phone
+            );
+
+            Long totalAmount = null;
             try {
-                phoneMasked = protector.maskedPhone(EncryptedString.of(rs.getString("phone_enc")));
-            } catch (Exception e) {
-                phoneMasked = "(decrypt-failed)";
+                Object amtObj = rs.getObject("total_amount");
+                if (amtObj != null) {
+                    totalAmount = ((Number) amtObj).longValue();
+                }
+            } catch (Exception ignore) {
+                totalAmount = null;
             }
 
             return new SendingStatusRowDTO(
                     rs.getLong("invoice_id"),
-                    rs.getInt("billing_yyyymm"),
-                    rs.getLong("users_id"),
-                    nameMasked,
-                    phoneMasked,
+                    bym,
+                    uid,
+                    userName,
+                    receiverMasked,
+                    channelVal,
                     rs.getString("status"),
-                    rs.getString("delivery_channel"),
                     rs.getInt("retry_count"),
+                    totalAmount,
                     lastAt,
                     createdAt
             );
         }, args.toArray());
     }
 
-    
-public SendingKpiDTO kpi(Integer billingYyyymm) {
-    StringBuilder sql = new StringBuilder("""
-        SELECT
-          COUNT(*) AS target_cnt,
-          SUM(CASE WHEN ds.status = 'READY' THEN 1 ELSE 0 END) AS ready_cnt,
-          SUM(CASE WHEN ds.status = 'SENT' THEN 1 ELSE 0 END) AS sent_cnt,
-          SUM(CASE WHEN ds.status = 'FAILED' THEN 1 ELSE 0 END) AS failed_cnt
-        FROM delivery_status ds
-        JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-        WHERE 1=1
-    """);
-    List<Object> args = new ArrayList<>();
-    if (billingYyyymm != null) {
-        sql.append(" AND mi.billing_yyyymm = ? ");
-        args.add(billingYyyymm);
-    }
-
-    return jdbcTemplate.queryForObject(sql.toString(), args.toArray(), (rs, rowNum) ->
-            new SendingKpiDTO(
-                    rs.getLong("target_cnt"),
-                    rs.getLong("ready_cnt"),
-                    rs.getLong("sent_cnt"),
-                    rs.getLong("failed_cnt")
-            )
-    );
-}
-
-public List<SendingStatusSummaryRowDTO> statusSummary(Integer billingYyyymm) {
-    StringBuilder sql = new StringBuilder("""
-        SELECT ds.status, COUNT(*) AS cnt
-        FROM delivery_status ds
-        JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-        WHERE 1=1
-    """);
-    List<Object> args = new ArrayList<>();
-    if (billingYyyymm != null) {
-        sql.append(" AND mi.billing_yyyymm = ? ");
-        args.add(billingYyyymm);
-    }
-    sql.append(" GROUP BY ds.status ORDER BY cnt DESC ");
-    return jdbcTemplate.query(sql.toString(), args.toArray(), (rs, rowNum) ->
-            new SendingStatusSummaryRowDTO(rs.getString("status"), rs.getLong("cnt"))
-    );
-}
-
-public List<SendingChannelStatusSummaryRowDTO> channelStatusSummary(Integer billingYyyymm) {
-    StringBuilder sql = new StringBuilder("""
-        SELECT ds.delivery_channel AS channel, ds.status, COUNT(*) AS cnt
-        FROM delivery_status ds
-        JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-        WHERE 1=1
-    """);
-    List<Object> args = new ArrayList<>();
-    if (billingYyyymm != null) {
-        sql.append(" AND mi.billing_yyyymm = ? ");
-        args.add(billingYyyymm);
-    }
-    sql.append(" GROUP BY ds.delivery_channel, ds.status ORDER BY channel, cnt DESC ");
-    return jdbcTemplate.query(sql.toString(), args.toArray(), (rs, rowNum) ->
-            new SendingChannelStatusSummaryRowDTO(rs.getString("channel"), rs.getString("status"), rs.getLong("cnt"))
-    );
-}
-
-public List<SendingStatusRowDTO> listByUser(Integer billingYyyymm, long usersId) {
-    return list(billingYyyymm, null, null, usersId, null, 200, 0);
-}
-
-public List<SendingRecentHistoryRowDTO> recentHistory(Integer billingYyyymm, int limit) {
-    StringBuilder sql = new StringBuilder("""
-        SELECT
-          dh.invoice_id,
-          mi.users_id,
-          dh.delivery_channel,
-          dh.status,
-          dh.error_message,
-          dh.requested_at
-        FROM delivery_history dh
-        JOIN monthly_invoice mi ON dh.invoice_id = mi.invoice_id
-        WHERE 1=1
-    """);
-    List<Object> args = new ArrayList<>();
-    if (billingYyyymm != null) {
-        sql.append(" AND mi.billing_yyyymm = ? ");
-        args.add(billingYyyymm);
-    }
-    sql.append(" ORDER BY dh.requested_at DESC, dh.delivery_history_id DESC LIMIT ? ");
-    args.add(Math.max(limit, 1));
-
-    return jdbcTemplate.query(sql.toString(), args.toArray(), (rs, rowNum) ->
-            new SendingRecentHistoryRowDTO(
-                    rs.getLong("invoice_id"),
-                    rs.getLong("users_id"),
-                    rs.getString("delivery_channel"),
-                    rs.getString("status"),
-                    rs.getString("error_message"),
-                    toLdt(rs.getTimestamp("requested_at"))
-            )
-    );
-}
-
-/**
- * 운영 안전을 위해 "실제 발송"이 아니라 FAILED -> READY 전환만 한다.
- * resendChannel로 delivery_channel을 바꾸고, delivery_history에 ADMIN_REQUEST 기록을 추가한다.
- */
-public int requestResendUser(Integer billingYyyymm, long usersId, String failedChannel, String resendChannel) {
-    int updated = updateFailedToReady(billingYyyymm, usersId, null, failedChannel, resendChannel);
-    if (updated > 0) {
-        insertAdminReadyHistory(billingYyyymm, usersId, null, resendChannel);
-    }
-    return updated;
-}
-
-public int requestResendBulk(Integer billingYyyymm, String failedChannel, String resendChannel) {
-    int updated = updateFailedToReady(billingYyyymm, null, null, failedChannel, resendChannel);
-    if (updated > 0) {
-        insertAdminReadyHistory(billingYyyymm, null, null, resendChannel);
-    }
-    return updated;
-}
-
-private int updateFailedToReady(Integer billingYyyymm, Long usersId, Long invoiceId, String failedChannel, String resendChannel) {
-    StringBuilder sql = new StringBuilder("""
-        UPDATE delivery_status ds
-        JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-        SET ds.status = 'READY',
-            ds.delivery_channel = ?,
-            ds.last_attempt_at = NOW()
-        WHERE ds.status = 'FAILED'
-    """);
-    List<Object> args = new ArrayList<>();
-    args.add(resendChannel);
-
-    if (billingYyyymm != null) { sql.append(" AND mi.billing_yyyymm = ? "); args.add(billingYyyymm); }
-    if (usersId != null) { sql.append(" AND mi.users_id = ? "); args.add(usersId); }
-    if (invoiceId != null) { sql.append(" AND ds.invoice_id = ? "); args.add(invoiceId); }
-    if (failedChannel != null && !failedChannel.isBlank()) { sql.append(" AND ds.delivery_channel = ? "); args.add(failedChannel.trim()); }
-
-    return jdbcTemplate.update(sql.toString(), args.toArray());
-}
-
-private int insertAdminReadyHistory(Integer billingYyyymm, Long usersId, Long invoiceId, String resendChannel) {
-    StringBuilder sql = new StringBuilder("""
-        INSERT INTO delivery_history (
-          invoice_id,
-          attempt_no,
-          delivery_channel,
-          receiver_info,
-          status,
-          error_message,
-          requested_at,
-          sent_at
-        )
-        SELECT
-          ds.invoice_id,
-          COALESCE((
-            SELECT MAX(dh2.attempt_no) + 1
-            FROM delivery_history dh2
-            WHERE dh2.invoice_id = ds.invoice_id
-          ), 1) AS attempt_no,
-          ? AS delivery_channel,
-          'ADMIN_REQUEST' AS receiver_info,
-          'READY' AS status,
-          NULL AS error_message,
-          NOW() AS requested_at,
-          NULL AS sent_at
-        FROM delivery_status ds
-        JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-        WHERE ds.status = 'READY'
-    """);
-    List<Object> args = new ArrayList<>();
-    args.add(resendChannel);
-
-    if (billingYyyymm != null) { sql.append(" AND mi.billing_yyyymm = ? "); args.add(billingYyyymm); }
-    if (usersId != null) { sql.append(" AND mi.users_id = ? "); args.add(usersId); }
-    if (invoiceId != null) { sql.append(" AND ds.invoice_id = ? "); args.add(invoiceId); }
-
-    // READY로 바뀐 row 중 resendChannel인 것만 history 기록 (중복 최소화)
-    sql.append(" AND ds.delivery_channel = ? ");
-    args.add(resendChannel);
-
-    return jdbcTemplate.update(sql.toString(), args.toArray());
-}
-
+    /** History 탭: invoice_id 기준 이력 */
     public List<SendingHistoryRowDTO> history(long invoiceId) {
         String sql = """
             SELECT
@@ -298,28 +148,96 @@ private int insertAdminReadyHistory(Integer billingYyyymm, Long usersId, Long in
         """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            LocalDateTime requestedAt = toLdt(rs.getTimestamp("requested_at"));
-            LocalDateTime sentAt = toLdt(rs.getTimestamp("sent_at"));
+            String channel = rs.getString("delivery_channel");
+            String receiverInfo = rs.getString("receiver_info");
+            String receiverMasked = maskReceiver(channel, receiverInfo, null, null);
 
             return new SendingHistoryRowDTO(
                     rs.getLong("delivery_history_id"),
                     rs.getLong("invoice_id"),
                     rs.getInt("attempt_no"),
-                    rs.getString("delivery_channel"),
-                    rs.getString("receiver_info"),
+                    channel,
+                    receiverMasked,
                     rs.getString("status"),
                     rs.getString("error_message"),
-                    requestedAt,
-                    sentAt
+                    toLdt(rs.getTimestamp("requested_at")),
+                    toLdt(rs.getTimestamp("sent_at"))
             );
         }, invoiceId);
+    }
+
+    /** Summary 탭: 월+채널 집계 */
+    public List<DeliverySummaryRowDTO> summaries(Integer billingYyyymm) {
+        // 테이블/컬럼명이 다르면 여기만 바꾸면 됨.
+        StringBuilder sql = new StringBuilder("""
+            SELECT
+              billing_yyyymm,
+              delivery_channel,
+              total_attempt_count,
+              success_count,
+              fail_count,
+              success_rate,
+              updated_at
+            FROM delivery_summary
+            WHERE 1=1
+        """);
+        List<Object> args = new ArrayList<>();
+        if (billingYyyymm != null) {
+            sql.append(" AND billing_yyyymm = ? ");
+            args.add(billingYyyymm);
+        }
+        sql.append(" ORDER BY delivery_channel ASC ");
+
+        return jdbcTemplate.query(sql.toString(), args.toArray(), (rs, rowNum) ->
+                new DeliverySummaryRowDTO(
+                        rs.getInt("billing_yyyymm"),
+                        rs.getString("delivery_channel"),
+                        rs.getLong("total_attempt_count"),
+                        rs.getLong("success_count"),
+                        rs.getLong("fail_count"),
+                        (Integer) rs.getObject("success_rate"),
+                        toLdt(rs.getTimestamp("updated_at"))
+                )
+        );
+    }
+
+    private String maskReceiver(String channel, String receiverInfoEnc, String emailEnc, String phoneEnc) {
+        try {
+            // 우선: history.receiver_info (실제 발송 대상)
+            if (receiverInfoEnc != null && receiverInfoEnc.startsWith("v1:")) {
+                if ("EMAIL".equalsIgnoreCase(channel)) {
+                    return protector.maskedEmail(EncryptedString.of(receiverInfoEnc));
+                }
+                return protector.maskedPhone(EncryptedString.of(receiverInfoEnc));
+            }
+
+            // fallback: users.email/users.phone
+            if ("EMAIL".equalsIgnoreCase(channel) && emailEnc != null) {
+                return protector.maskedEmail(EncryptedString.of(emailEnc));
+            }
+            if (!"EMAIL".equalsIgnoreCase(channel) && phoneEnc != null) {
+                return protector.maskedPhone(EncryptedString.of(phoneEnc));
+            }
+
+            // ADMIN_REQUEST 같은 값은 그대로(민감정보가 아니어야 함)
+            if (receiverInfoEnc != null && !receiverInfoEnc.isBlank()) {
+                return receiverInfoEnc;
+            }
+
+            return "-";
+        } catch (Exception e) {
+            return "(decrypt-failed)";
+        }
     }
 
     private static LocalDateTime toLdt(Timestamp ts) {
         return ts == null ? null : ts.toLocalDateTime();
     }
 
-    private static void applyWhere(StringBuilder sql, List<Object> args, Integer billingYyyymm, String status, String channel, Long usersId, Long invoiceId) {
+    private static void applyWhere(StringBuilder sql, List<Object> args,
+                                   Integer billingYyyymm, String status, String deliveryChannel,
+                                   Long usersId, Long invoiceId) {
+        // billingYyyymm/usersId는 monthly_invoice가 있어야 의미가 있으므로 LEFT JOIN 상태에서 필터를 걸면 자동으로 NULL row는 제외됨.
         if (billingYyyymm != null) {
             sql.append(" AND mi.billing_yyyymm = ? ");
             args.add(billingYyyymm);
@@ -328,9 +246,9 @@ private int insertAdminReadyHistory(Integer billingYyyymm, Long usersId, Long in
             sql.append(" AND ds.status = ? ");
             args.add(status.trim());
         }
-        if (channel != null && !channel.isBlank()) {
+        if (deliveryChannel != null && !deliveryChannel.isBlank()) {
             sql.append(" AND ds.delivery_channel = ? ");
-            args.add(channel.trim());
+            args.add(deliveryChannel.trim());
         }
         if (usersId != null) {
             sql.append(" AND mi.users_id = ? ");
