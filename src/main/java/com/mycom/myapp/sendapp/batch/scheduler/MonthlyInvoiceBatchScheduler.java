@@ -37,7 +37,7 @@ public class MonthlyInvoiceBatchScheduler {
      * 매월 1일 새벽 3시에 배치 실행
      * cron 설정: (초 분 시 일 월 요일)
      */
-//    @Scheduled(cron = "0 0 7 3 * *")
+    @Scheduled(cron = "0 0 7 3 * *")
     public void scheduleMonthlyInvoiceBatch() {
         Integer targetYyyymm = makeTargetYyyymm();
 
