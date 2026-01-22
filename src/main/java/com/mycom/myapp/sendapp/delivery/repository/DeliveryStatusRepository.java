@@ -130,7 +130,6 @@ public class DeliveryStatusRepository {
         String sql = """
             UPDATE delivery_status 
                SET status = ?, 
-                   retry_count = ?, 
                    last_attempt_at = ?
              WHERE invoice_id = ?
         """;
@@ -141,9 +140,8 @@ public class DeliveryStatusRepository {
                 ProcessResult r = results.get(i);
                 
                 ps.setString(1, r.getStatus()); // SENT 또는 FAILED
-                ps.setInt(2, r.getAttemptNo()); 
-                ps.setTimestamp(3, Timestamp.valueOf(chunkNow));
-                ps.setLong(4, r.getInvoiceId());
+                ps.setTimestamp(2, Timestamp.valueOf(chunkNow));
+                ps.setLong(3, r.getInvoiceId());
             }
 
             @Override

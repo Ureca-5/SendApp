@@ -56,14 +56,14 @@ public class DeliveryProcessor {
             String htmlContent = templateRenderer.render(payload, maskedName, maskedEmail, maskedPhone);
 //            String htmlContent = templateRenderer.render(payload, maskedName, payload.get("receiver_info"), payload.get("receiver_info"));
             
-            // 테스트를 위해 100건만 파일 저장(추후 주석처리 예정)
+            // 테스트를 위해 100건만 파일 저장
             String fileName = "NOT_SAVED";
             if (fileSaveCounter.getAndIncrement() < 100) {
             	fileName = templateRenderer.saveToFile(invoiceId, maskedName, htmlContent);
             }
             
-            // 4. 발송 모킹 (1초 지연 및 1% 실패 확률)
-            // Thread.sleep(1000);
+            // 1초 지연 및 1% 실패 확률
+//            Thread.sleep(1000);
             boolean isSuccess = ThreadLocalRandom.current().nextInt(100) != 0;
 
             if (isSuccess) {
