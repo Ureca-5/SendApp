@@ -25,7 +25,7 @@ public class DeliveryRetryScheduler {
     private final DeliveryStatusRepository statusRepository;
     private final StringRedisTemplate redisTemplate;
     
-    private static final int MAX_RETRY_COUNT = 3; 
+    private static final int MAX_RETRY_COUNT = 2; 
 
     // ★ 수정됨: "/10" -> "*/10" (10초마다) 또는 "0 * * * * *" (1분마다)
     @Scheduled(cron = "*/10 * * * * *") 
@@ -89,8 +89,7 @@ public class DeliveryRetryScheduler {
                 fieldMap.put("invoice_id", String.valueOf(dto.getInvoiceId()));
                 fieldMap.put("delivery_channel", dto.getDeliveryChannel()); // "SMS"
                 
-                // 로그 확인용: "SMS 1회차"라고 보이게 1을 넣음 (DB는 0으로 초기화됨)
-                fieldMap.put("retry_count", "1"); 
+                fieldMap.put("retry_count", String.valueOf(dto.getRetryCount()));
                 fieldMap.put("email", dto.getEmail());
                 fieldMap.put("phone", dto.getPhone());
                 fieldMap.put("billing_yyyymm", dto.getBillingYyyymm());
