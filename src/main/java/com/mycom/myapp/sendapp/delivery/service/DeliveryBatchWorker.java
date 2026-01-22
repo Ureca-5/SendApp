@@ -49,7 +49,7 @@ public class DeliveryBatchWorker {
     private static final int FETCH_COUNT = 1000;
     private static final int CHUNK_SIZE = 100;
 
-    @Scheduled(fixedDelay = 500)
+    @Scheduled(fixedDelay = 1000)
     public void run() {
         // 1. Redis Stream Read (Type Safety 보완)
         @SuppressWarnings("unchecked")
