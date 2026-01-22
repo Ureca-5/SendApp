@@ -130,7 +130,6 @@ public class DeliveryStatusRepository {
         String sql = """
             UPDATE delivery_status 
                SET status = ?, 
-                   retry_count = ?, 
                    last_attempt_at = ?
              WHERE invoice_id = ?
         """;
@@ -141,9 +140,8 @@ public class DeliveryStatusRepository {
                 ProcessResult r = results.get(i);
                 
                 ps.setString(1, r.getStatus()); // SENT 또는 FAILED
-                ps.setInt(2, r.getAttemptNo()); 
-                ps.setTimestamp(3, Timestamp.valueOf(chunkNow));
-                ps.setLong(4, r.getInvoiceId());
+                ps.setTimestamp(2, Timestamp.valueOf(chunkNow));
+                ps.setLong(3, r.getInvoiceId());
             }
 
             @Override
@@ -157,9 +155,6 @@ public class DeliveryStatusRepository {
     // 5️⃣ [Scheduler용] 재발송 대상 조회 (JOIN 쿼리)
     // ==========================================
     public List<DeliveryRetryDto> findRetryTargets(int maxRetry) {
-        // ★ 중요: 실제 DB 스키마(users)에 맞춰 컬럼명 수정됨
-        // phone_no (X) -> phone (O)
-        // users_id (O)
         String sql = """
             SELECT 
                 ds.invoice_id, 
@@ -169,15 +164,16 @@ public class DeliveryStatusRepository {
                 mi.total_amount,
                 u.name AS recipient_name, 
                 
-                -- ★ 채널이 이메일이면 email, 문자면 phone을 가져오도록 분기 처리 (선택사항)
-                -- 일단은 email을 가져오게 둠. (필요시 u.phone 으로 변경)
-                u.email AS receiver_info
+                -- ★ [수정] 이메일, 폰 둘 다 조회
+                u.email AS email_info,
+                u.phone AS phone_info,
+                
+                u.email AS receiver_info -- 이번 발송 타겟
                 
             FROM delivery_status ds
             INNER JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
-            INNER JOIN users u ON mi.users_id = u.users_id  -- ★ delivery_user -> users
-            WHERE ds.status = 'FAILED' 
-              AND ds.retry_count < ?
+            INNER JOIN users u ON mi.users_id = u.users_id
+            WHERE ds.status = 'FAILED' AND ds.retry_count < ?
         """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
@@ -189,6 +185,9 @@ public class DeliveryStatusRepository {
                     .totalAmount(rs.getLong("total_amount"))
                     .recipientName(rs.getString("recipient_name"))
                     .receiverInfo(rs.getString("receiver_info"))
+                    // ★ [추가] 둘 다 담기
+                    .email(rs.getString("email_info"))
+                    .phone(rs.getString("phone_info"))
                     .build();
         }, maxRetry);
     }
@@ -207,41 +206,48 @@ public class DeliveryStatusRepository {
             invoiceId
         );
     }
- // ==========================================
+    // ==========================================
     // 7️⃣ [Fallback용] 3회 실패한 이메일 -> SMS 전환 대상 조회
     // ==========================================
     public List<DeliveryRetryDto> findFallbackTargets(int maxRetry) {
-        // ★ 핵심: u.email 대신 u.phone을 가져오고, 채널은 'SMS'로 고정해서 가져옴
         String sql = """
             SELECT 
                 ds.invoice_id, 
-                'SMS' as delivery_channel,  -- 이제부터 SMS라고 우김
-                0 as retry_count,           -- SMS로는 첫 시도니까 0으로 간주
+                'SMS' as delivery_channel, 
+                0 as retry_count,
                 mi.billing_yyyymm, 
                 mi.total_amount,
                 u.name AS recipient_name, 
-                u.phone AS receiver_info    -- ★ 여기가 핵심! (이메일 -> 폰번호)
+                
+                -- ★ [수정] 이메일, 폰 둘 다 조회
+                u.email AS email_info,
+                u.phone AS phone_info,
+                
+                u.phone AS receiver_info -- 이번 발송 타겟(SMS)
+                
             FROM delivery_status ds
             INNER JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
             INNER JOIN users u ON mi.users_id = u.users_id
             WHERE ds.status = 'FAILED' 
-              AND ds.retry_count >= ?       -- 3회 이상 실패했고
-              AND ds.delivery_channel = 'EMAIL' -- 이메일이었던 애들만
+              AND ds.retry_count >= ? 
+              AND ds.delivery_channel = 'EMAIL'
         """;
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
             return DeliveryRetryDto.builder()
                     .invoiceId(rs.getLong("invoice_id"))
-                    .deliveryChannel(rs.getString("delivery_channel")) // "SMS"가 들어감
-                    .retryCount(rs.getInt("retry_count")) // 0이 들어감
+                    .deliveryChannel("SMS")
+                    .retryCount(0)
                     .billingYyyymm(String.valueOf(rs.getInt("billing_yyyymm")))
                     .totalAmount(rs.getLong("total_amount"))
                     .recipientName(rs.getString("recipient_name"))
-                    .receiverInfo(rs.getString("receiver_info")) // 폰번호가 들어감
+                    .receiverInfo(rs.getString("receiver_info"))
+                    // ★ [추가] 둘 다 담기
+                    .email(rs.getString("email_info"))
+                    .phone(rs.getString("phone_info"))
                     .build();
         }, maxRetry);
     }
-
     // ==========================================
     // 8️⃣ [Fallback용] DB 상태 변경 (EMAIL -> SMS, 카운트 초기화)
     // ==========================================

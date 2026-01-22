@@ -158,47 +158,61 @@ public class PageController {
     @GetMapping("/sending")
     public String sending(
             @RequestParam(value = "billing_yyyymm", required = false) Integer billingYyyymm,
-            @RequestParam(value = "users_id", required = false) Long usersId,
+            @RequestParam(value = "invoice_id", required = false) Long invoiceId,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "delivery_channel", required = false) String deliveryChannel,
+            @RequestParam(value = "tab", required = false) String tab,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "50") int size,
-            @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "channel", required = false) String channel,
-            @RequestParam(value = "invoice_id", required = false) Long invoiceId,
             Model model
     ) {
-        model.addAttribute("pageTitle", "Sending");
+        String safeTab = (tab == null || tab.isBlank()) ? "status" : tab;
+
+        model.addAttribute("pageTitle", "SENDING");
         model.addAttribute("activeMenu", "sending");
+
         model.addAttribute("billing_yyyymm", billingYyyymm);
-        model.addAttribute("users_id", usersId);
-        model.addAttribute("filterAction", "/sending");
-        model.addAttribute("page", page);
-        model.addAttribute("size", size);
+        model.addAttribute("invoice_id", invoiceId);
         model.addAttribute("status", status);
-        model.addAttribute("channel", channel);
+        model.addAttribute("delivery_channel", deliveryChannel);
+        model.addAttribute("tab", safeTab);
 
-        // ✅ 네 SendingService에는 statusStats/channelStatusStats 메서드가 없으므로 제거
-        model.addAttribute("statusStats", List.of());
-        model.addAttribute("channelStatusStats", List.of());
-        model.addAttribute("userDeliveryRows", List.of());
+        // 기본값(템플릿 안정)
+        model.addAttribute("deliveryStatuses", java.util.List.of());
+        model.addAttribute("deliveryHistories", java.util.List.of());
+        model.addAttribute("deliverySummaries", java.util.List.of());
 
-        // ✅ SendingService 시그니처(에러 메시지 기준)
-        // count(Integer, String, String, Long, Long)
-        // list(Integer, String, String, Long, Long, int, int)
-        int total = sendingService.count(billingYyyymm, status, channel, usersId, invoiceId);
-        var rows = sendingService.list(billingYyyymm, status, channel, usersId, invoiceId, page, size);
-        int totalPages = (int) Math.ceil(total / (double) Math.max(size, 1));
+        // HISTORY 탭
+        if ("history".equalsIgnoreCase(safeTab)) {
+            if (invoiceId != null) {
+                model.addAttribute("deliveryHistories", sendingService.history(invoiceId));
+            }
+            return "sending";
+        }
 
-        model.addAttribute("sendingRows", rows);
+        // SUMMARY 탭
+        if ("summary".equalsIgnoreCase(safeTab)) {
+            model.addAttribute("deliverySummaries", sendingService.summaries(billingYyyymm));
+            return "sending";
+        }
+
+        // STATUS 탭
+        int total = sendingService.count(billingYyyymm, status, deliveryChannel, null, invoiceId);
+        int safeSize = Math.min(Math.max(size, 1), 200);
+        int safePage = Math.max(page, 0);
+        int totalPages = (int) Math.ceil(total / (double) safeSize);
+
         model.addAttribute("total", total);
+        model.addAttribute("page", safePage);
+        model.addAttribute("size", safeSize);
         model.addAttribute("totalPages", totalPages);
 
-        if (invoiceId != null) {
-            model.addAttribute("selectedInvoiceId", invoiceId);
-            model.addAttribute("historyRows", sendingService.history(invoiceId));
-        }
+        model.addAttribute("deliveryStatuses",
+                sendingService.list(billingYyyymm, status, deliveryChannel, null, invoiceId, safePage, safeSize));
 
         return "sending";
     }
+
 
     @GetMapping("/batch-jobs")
     public String batchJobs(
