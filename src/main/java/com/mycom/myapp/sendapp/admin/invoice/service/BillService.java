@@ -1,19 +1,14 @@
 package com.mycom.myapp.sendapp.admin.invoice.service;
 
+//import com.mycom.myapp.sendapp.admin.invoice.dao.BatchAttemptDao;
+import com.mycom.myapp.sendapp.admin.invoice.dao.BatchFailDao;
 import com.mycom.myapp.sendapp.admin.invoice.dao.BillDao;
 import com.mycom.myapp.sendapp.admin.invoice.dao.InvoiceDetailDao;
-import com.mycom.myapp.sendapp.admin.invoice.dto.BillRowRawDTO;
-import com.mycom.myapp.sendapp.admin.invoice.dto.BillRowViewDTO;
-import com.mycom.myapp.sendapp.admin.invoice.dto.InvoiceDetailRowRawDTO;
-import com.mycom.myapp.sendapp.admin.invoice.dto.InvoiceDetailRowViewDTO;
+import com.mycom.myapp.sendapp.admin.invoice.dto.*;
 import com.mycom.myapp.sendapp.global.crypto.ContactProtector;
-import com.mycom.myapp.sendapp.global.crypto.EncryptedString;
 import org.springframework.stereotype.Service;
 
 import java.text.NumberFormat;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
@@ -22,132 +17,161 @@ public class BillService {
 
     private final BillDao billDao;
     private final InvoiceDetailDao invoiceDetailDao;
+    //private final BatchAttemptDao attemptDao;
+    private final BatchFailDao failDao;
     private final ContactProtector protector;
 
-    private static final NumberFormat KRW = NumberFormat.getNumberInstance(Locale.KOREA);
-    private static final DateTimeFormatter DT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
-
-    private String monthText(int yyyymm) {
-        int y = yyyymm / 100;
-        int m = yyyymm % 100;
-        return String.format("%04d-%02d", y, m);
-    }
-
-    private String date(LocalDate d) {
-        return d == null ? "-" : d.toString();
-    }
-
-    private String dateTime(LocalDateTime dt) {
-        return dt == null ? "-" : dt.format(DT);
-    }
-
-
-    public BillService(BillDao billDao, InvoiceDetailDao invoiceDetailDao, ContactProtector protector) {
+    public BillService(
+            BillDao billDao,
+            InvoiceDetailDao invoiceDetailDao,
+            //BatchAttemptDao attemptDao,
+            BatchFailDao failDao,
+            ContactProtector protector
+    ) {
         this.billDao = billDao;
         this.invoiceDetailDao = invoiceDetailDao;
+        //this.attemptDao = attemptDao;
+        this.failDao = failDao;
         this.protector = protector;
     }
 
-    
-    private BillRowViewDTO toView(BillRowRawDTO r) {
-        String monthText = monthText(r.billingYyyymm());
+    // =========================
+    // 1) Invoices (monthly_invoice)
+    // =========================
 
-        String nameMasked = protector.maskedName(r.userName());
-        String phoneMasked;
-        try {
-            phoneMasked = protector.maskedPhone(EncryptedString.of(r.phoneEnc()));
-        } catch (Exception e) {
-            phoneMasked = "(decrypt-failed)";
-        }
-
-        return new BillRowViewDTO(
-            r.invoiceId(),
-            r.usersId(),
-            monthText,
-            nameMasked,
-            phoneMasked,
-            money(r.planAmount()),
-            money(r.addonAmount()),
-            money(r.etcAmount()),
-            money(r.discountAmount()),
-            money(r.totalAmount()),
-            date(r.dueDate()),
-            dateTime(r.createdAt())
-        );
-    }
-
-public long count(Integer billingYyyymm, String keyword, Long invoiceId) {
+    public long countInvoices(Integer billingYyyymm, String keyword, Long invoiceId) {
         return billDao.count(billingYyyymm, keyword, invoiceId);
     }
 
-    public List<BillRowViewDTO> list(Integer billingYyyymm, String keyword, Long invoiceId, int page, int size) {
-        int offset = page * size;
-        List<BillRowRawDTO> rows = billDao.find(billingYyyymm, keyword, invoiceId, size, offset);
+    public List<BillRowViewDTO> listInvoices(Integer billingYyyymm, String keyword, Long invoiceId, int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, 200));
+        int safePage = Math.max(page, 0);
+        int offset = safePage * safeSize;
 
-        return rows.stream().map(this::toView).toList();
-    }
-
-    public BillRowViewDTO findOne(long invoiceId) {
-        BillRowRawDTO raw = billDao.findOne(invoiceId);
-        if (raw == null) return null;
-        return toView(raw);
-    }
-
-
-    public BillRowViewDTO getBill(long invoiceId) {
-    BillRowRawDTO r = billDao.findOne(invoiceId);
-    if (r == null) return null;
-
-    String monthText = formatBillingMonth(r.billingYyyymm());
-
-    String nameMasked = protector.maskedName(r.userName());
-    String phoneMasked;
-    try {
-        phoneMasked = protector.maskedPhone(EncryptedString.of(r.phoneEnc()));
-    } catch (Exception e) {
-        phoneMasked = "(decrypt-failed)";
-    }
-
-    return new BillRowViewDTO(
-            r.invoiceId(),
-            r.usersId(),
-            monthText,
-            nameMasked,
-            phoneMasked,
-            money(r.planAmount()),
-            money(r.addonAmount()),
-            money(r.etcAmount()),
-            money(r.discountAmount()),
-            money(r.totalAmount()),
-            r.dueDate() == null ? "-" : r.dueDate().toString(),
-            r.createdAt() == null ? "-" : r.createdAt().format(DT)
-    );
-}
-
-// ✅ 추가: 상세 조회
-    public List<InvoiceDetailRowViewDTO> details(long invoiceId) {
-        List<InvoiceDetailRowRawDTO> rows = invoiceDetailDao.findByInvoiceId(invoiceId);
-        return rows.stream()
-                .map(r -> new InvoiceDetailRowViewDTO(
-                        r.detailId(),
-                        r.invoiceCategoryId(),
-                        r.serviceName(),
-                        r.originAmount(),
-                        r.discountAmount(),
-                        r.totalAmount(),
-                        r.usageStartDate(),
-                        r.usageEndDate()
-                ))
+        return billDao.list(billingYyyymm, keyword, invoiceId, safeSize, offset)
+                .stream()
+                .map(this::toBillView)
                 .toList();
     }
 
-    private static String money(long v) {
-        return KRW.format(v) + "원";
+    public BillRowRawDTO findInvoice(long invoiceId) {
+        return billDao.getBill(invoiceId);
     }
 
-    private static String formatBillingMonth(int yyyymm) {
-        int yyyy = yyyymm / 100;
-        int mm = yyyymm % 100;
-        return yyyy + "년 " + mm + "월";
+    public BillRowViewDTO findInvoiceView(long invoiceId) {
+        BillRowRawDTO r = findInvoice(invoiceId);
+        return r == null ? null : toBillView(r);
+    }
+
+    public List<InvoiceDetailRowViewDTO> invoiceDetails(long invoiceId) {
+        return invoiceDetailDao.listByInvoice(invoiceId)
+                .stream()
+                .map(this::toDetailView)
+                .toList();
+    }
+
+    private BillRowViewDTO toBillView(BillRowRawDTO r) {
+        String nameMasked = protector.maskedName(r.userName());
+
+        return new BillRowViewDTO(
+                r.invoiceId(),
+                r.billingYyyymm(),
+                r.usersId(),
+                nameMasked,
+                r.totalAmount(),
+                r.totalDiscountAmount(),
+                r.dueDate(),
+                r.createdAt()
+        );
+    }
+
+    private InvoiceDetailRowViewDTO toDetailView(InvoiceDetailRowRawDTO r) {
+        String usageRange = (r.usageStartDate() != null && r.usageEndDate() != null)
+                ? (r.usageStartDate() + " ~ " + r.usageEndDate())
+                : "-";
+
+        return new InvoiceDetailRowViewDTO(
+                r.detailId(),
+                r.invoiceCategoryId(),
+                nvl(r.invoiceCategoryName(), "-"),
+                r.serviceName(),
+                fmtMoney(r.originAmount()),
+                fmtMoney(r.discountAmount()),
+                fmtMoney(r.totalAmount()),
+                usageRange
+        );
+    }
+
+    // =========================
+    // 2) Attempts (monthly_invoice_batch_attempt)
+    // =========================
+
+
+ 
+
+    // =========================
+    // 3) Failures (monthly_invoice_batch_fail)
+    // =========================
+
+    public int countFailures(Integer targetYyyymm, Long attemptId, String errorCode) {
+        return failDao.count(targetYyyymm, attemptId, errorCode);
+    }
+
+    public List<BatchFailViewDTO> listFailures(Integer targetYyyymm, Long attemptId, String errorCode, int page, int size) {
+        int safeSize = Math.max(1, Math.min(size, 200));
+        int safePage = Math.max(page, 0);
+        int offset = safePage * safeSize;
+
+        return failDao.list(targetYyyymm, attemptId, errorCode, safeSize, offset)
+                .stream()
+                .map(this::toFailView)
+                .toList();
+    }
+
+    private BatchFailViewDTO toFailView(BatchFailRowDTO r) {
+        String msg = nvl(r.errorMessage(), "");
+        String shortMsg = msg;
+        if (shortMsg.length() > 80) {
+            shortMsg = shortMsg.substring(0, 80) + "…";
+        }
+
+        return new BatchFailViewDTO(
+                r.failId(),
+                r.attemptId(),
+                nvl(r.invoiceCategoryName(), "-"),
+                r.billingHistoryId(),
+                nvl(r.errorCode(), "-"),
+                msg,
+                shortMsg,
+                r.createdAt()
+        );
+    }
+
+    // =========================
+    // Helpers
+    // =========================
+
+    private static String fmtMoney(long amount) {
+        NumberFormat nf = NumberFormat.getNumberInstance(Locale.KOREA);
+        return nf.format(amount);
+    }
+
+    private static String fmtDurationMs(Long durationMs) {
+        if (durationMs == null) return "-";
+        if (durationMs < 1000) return durationMs + "ms";
+
+        long sec = durationMs / 1000;
+        long ms = durationMs % 1000;
+        long min = sec / 60;
+        long s = sec % 60;
+
+        if (min <= 0) {
+            return s + "s " + ms + "ms";
+        }
+        return min + "m " + s + "s";
+    }
+
+    private static String nvl(String v, String dflt) {
+        return (v == null || v.isBlank()) ? dflt : v;
     }
 }

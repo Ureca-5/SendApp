@@ -759,3 +759,42 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   .split { grid-template-columns: 1fr; }
   .truncate { max-width: 240px; }
 }
+
+
+/* style.css 기존 내용 유지 후 아래 내용 추가/수정 */
+
+/* =========================================
+   10. Refactored Layout Utilities
+   ========================================= */
+
+/* Flexbox Layout Helpers (인라인 스타일 제거용) */
+.flex-row {
+  display: flex;
+  gap: 12px;
+  align-items: stretch;
+  flex-wrap: wrap;
+}
+
+/* Split Layout Variants */
+/* 기본 .split (1:1) 외에 비율 조정 버전 추가 */
+.split--auto-fixed {
+  grid-template-columns: 1fr 420px; /* 왼쪽 가변, 오른쪽 고정 */
+}
+
+@media (max-width: 1100px) {
+  .split--auto-fixed { grid-template-columns: 1fr; }
+}
+
+/* Panel Margins - 일관된 여백 관리 */
+.panel + .panel { margin-top: 20px; } /* 패널이 연속될 때 자동 여백 */
+.mt-0 { margin-top: 0 !important; }
+
+/* Filterbar Label Consistency */
+/* form 내부의 label, div.label 모두 대응하되 가급적 label 태그 권장 */
+.filterbar .label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}

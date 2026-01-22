@@ -20,8 +20,8 @@ public class MonthlyInvoiceTestController {
     }
 
     @PostMapping("/test/{targetYyyymm}")
-    public void test(@PathVariable Integer targetYyyymm) {
-        // 2025년 10월 데이터 대상으로 테스트 정산 배치 수행 api
+    public void test(@PathVariable("targetYyyymm") Integer targetYyyymm) {
         monthlyInvoiceBatchScheduler.testMonthlyInvoiceBatch(targetYyyymm);
     }
+
 }
