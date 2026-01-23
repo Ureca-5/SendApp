@@ -37,10 +37,10 @@ public class DashboardService {
     }
 
     public DashboardView load(Integer billingYyyymm, int recentLimit) {
-        int yyyymm = 202512;//resolveDefaultYyyymm(billingYyyymm); 
-        //임시로 202512 yyyymm 수정하는 로직 추가예정
-        
-        int limit = Math.max(3, Math.min(recentLimit, 50));
+    	int yyyymm = resolveDefaultYyyymm(billingYyyymm);
+    	
+
+        int limit = 10;
 
         // ===== Batch (최근 attempt 목록 + 최신 attempt 1건으로 KPI) =====
         List<BatchAttemptRowVM> recentAttemptsRaw = batchJobsService.recentAttempts(yyyymm, limit);

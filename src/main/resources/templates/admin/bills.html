@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout :: layout(~{::#content})}">
+<head>
+  <meta charset="UTF-8" />
+  <title th:text="${pageTitle}">Bills</title>
+</head>
+<body>
+
+<div id="content" class="content" th:fragment="content">
+
+  <!-- Page Head -->
+  <div class="pagehead">
+    <div>
+      <h2 style="margin:0;">Bills</h2>
+      <div class="pagehead__sub">청구서 조회 및 실패 원인 확인</div>
+    </div>
+    <div class="pagehead__right panel__meta">
+      <span class="chip chip--neutral">현재 탭: <strong th:text="${currentTabLabel}">Invoices</strong></span>
+      <span class="chip chip--neutral">YYYYMM: <strong th:text="${billing_yyyymm != null ? billing_yyyymm : '-'}">-</strong></span>
+      <span class="chip chip--neutral" th:if="${tab}=='invoices'">invoice_id: <strong th:text="${invoice_id != null ? invoice_id : '-'}">-</strong></span>
+    </div>
+  </div>
+
+  <!-- Filters + Tabs -->
+  <div class="panel">
+    <div class="panel__head">
+      <h3 class="panel__title">Filters</h3>
+      <div class="panel__meta"><span class="hint">탭마다 필터가 다릅니다.</span></div>
+    </div>
+
+    <!-- Tabs inside panel (Sending 스타일) -->
+    <div class="tabs">
+      <a class="tab" th:classappend="${tab}=='invoices' ? ' is-active' : ''"
+         th:href="@{/bills(tab='invoices', billing_yyyymm=${billing_yyyymm})}">
+        Invoices
+      </a>
+      <a class="tab" th:classappend="${tab}=='failures' ? ' is-active' : ''"
+         th:href="@{/bills(tab='failures', billing_yyyymm=${billing_yyyymm})}">
+        Failures
+      </a>
+    </div>
+
+    <div class="panel__body">
+      <form class="filterbar" method="get" th:action="${filterAction}">
+        <input type="hidden" name="tab" th:value="${tab}" />
+
+        <div class="filterbar__row">
+          <div class="field">
+            <label class="label">정산 월 (YYYYMM)</label>
+            <input class="input w-140" name="billing_yyyymm" th:value="${billing_yyyymm}" placeholder="202601" />
+          </div>
+
+          <div class="field" th:if="${tab}=='invoices'">
+            <label class="label">Keyword (users_id / name)</label>
+            <input class="input w-240" name="keyword" th:value="${keyword}" placeholder="10001 또는 홍길동" />
+          </div>
+
+          <div class="field" th:if="${tab}=='invoices'">
+            <label class="label">Invoice ID</label>
+            <input class="input w-180" name="invoice_id" th:value="${invoice_id}" placeholder="예: 50001" />
+          </div>
+
+          <div class="field" th:if="${tab}=='failures'">
+            <label class="label">Attempt ID</label>
+            <input class="input w-180" name="attempt_id" th:value="${attempt_id}" placeholder="예: 10001" />
+          </div>
+
+          <div class="field" th:if="${tab}=='failures'">
+            <label class="label">Error Code</label>
+            <input class="input w-220" name="error_code" th:value="${error_code}" placeholder="예: DETAIL_INSERT_FAIL" />
+          </div>
+
+          <div class="field">
+            <label class="label">&nbsp;</label>
+            <button class="btn btn--primary" type="submit">Search</button>
+          </div>
+        </div>
+
+        <div class="hint mt-12" th:if="${tab}=='invoices'">
+          Invoices는 <strong>monthly_invoice</strong> 기반입니다. 청구서 헤더(유저별 총액/납부기한)를 조회하고, 클릭 시 상세(라인 아이템)를 확인합니다.
+        </div>
+        <div class="hint mt-12" th:if="${tab}=='failures'">
+          Failures는 <strong>monthly_invoice_batch_fail</strong> 기반입니다. 원천(billing_history_id)별 에러를 확인합니다.
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- =======================
+       INVOICES TAB
+       ======================= -->
+  <div th:if="${tab}=='invoices'">
+
+    <!-- Top split: List + Summary -->
+    <div class="split split--narrow-right">
+
+      <!-- Left: Invoice List -->
+      <div class="panel panel--list">
+        <div class="panel__head">
+          <h3 class="panel__title">Invoice List</h3>
+          <div class="panel__meta">
+            <span class="chip chip--neutral">Total: <strong th:text="${total}">0</strong></span>
+          </div>
+        </div>
+
+        <div class="panel__body">
+          <div class="table-wrap is-sticky">
+            <table class="table bills-table">
+              <thead>
+              <tr>
+                <th class="col-md">Invoice</th>
+                <th class="col-sm">Month</th>
+                <th class="col-sm">User</th>
+                <th class="col-md">Total</th>
+                <th class="col-md">Discount</th>
+                <th class="col-md">Due</th>
+                <th class="col-md">Created</th>
+              </tr>
+              </thead>
+
+              <tbody>
+              <tr th:if="${invoices == null || #lists.isEmpty(invoices)}">
+                <td colspan="7" class="td-muted">No invoices</td>
+              </tr>
+
+              <tr th:each="inv : ${invoices}"
+                  th:classappend="${selectedInvoice != null && inv.invoiceId == selectedInvoice.invoiceId} ? ' is-selected' : ''">
+                <td>
+                  <a class="link"
+                     th:href="@{/bills(tab='invoices', billing_yyyymm=${billing_yyyymm}, keyword=${keyword}, invoice_id=${inv.invoiceId})}"
+                     th:text="${inv.invoiceId}">
+                    50001
+                  </a>
+                </td>
+                <td th:text="${inv.billingYyyymm}">202601</td>
+                <td th:text="${inv.userName}">-</td>
+                <td th:text="${#numbers.formatInteger(inv.totalAmount, 1, 'COMMA')}">0</td>
+                <td th:text="${#numbers.formatInteger(inv.totalDiscountAmount, 1, 'COMMA')}">0</td>
+                <td th:text="${inv.dueDate}">-</td>
+                <td th:text="${#temporals.format(inv.createdAt, 'yyyy-MM-dd HH:mm')}">-</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pager">
+            <div class="pager__left">
+              Page <strong th:text="${page}">0</strong> / <strong th:text="${totalPages}">0</strong>
+            </div>
+            <div class="pager__right">
+              <a class="btn btn--small" th:classappend="${page<=0} ? ' is-disabled' : ''"
+                 th:href="@{/bills(tab='invoices', billing_yyyymm=${billing_yyyymm}, keyword=${keyword}, page=${page-1}, size=${size})}">
+                Prev
+              </a>
+              <a class="btn btn--small" th:classappend="${page+1>=totalPages} ? ' is-disabled' : ''"
+                 th:href="@{/bills(tab='invoices', billing_yyyymm=${billing_yyyymm}, keyword=${keyword}, page=${page+1}, size=${size})}">
+                Next
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Invoice Summary only -->
+      <div class="panel panel--side">
+        <div class="panel__head">
+          <h3 class="panel__title">Invoice Detail</h3>
+        </div>
+
+        <div class="panel__body">
+          <div th:if="${selectedInvoice == null}" class="empty">
+            <p class="empty__title">선택된 Invoice 없음</p>
+            <p class="empty__desc">왼쪽 Invoice ID를 클릭하면 상세가 표시됩니다.</p>
+          </div>
+
+          <div th:if="${selectedInvoice != null}">
+            <div class="mt-12">
+              <a class="btn btn--small"
+                 target="_blank"
+                 rel="noopener"
+                 th:href="@{/bills/preview(invoice_id=${selectedInvoice.invoiceId})}">
+                청구서 미리보기
+              </a>
+            </div>
+
+            <div class="kv mb-14 mt-12">
+              <div class="kv__key">Invoice ID</div><div class="kv__val--strong" th:text="${selectedInvoice.invoiceId}">-</div>
+              <div class="kv__key">Month</div><div th:text="${selectedInvoice.billingYyyymm}">-</div>
+              <div class="kv__key">User</div><div th:text="${selectedInvoice.userName}">-</div>
+              <div class="kv__key">Total</div><div th:text="${#numbers.formatInteger(selectedInvoice.totalAmount, 1, 'COMMA')}">-</div>
+              <div class="kv__key">Discount</div><div th:text="${#numbers.formatInteger(selectedInvoice.totalDiscountAmount, 1, 'COMMA')}">-</div>
+              <div class="kv__key">Due</div><div th:text="${selectedInvoice.dueDate}">-</div>
+            </div>
+
+            <div class="hint">
+             
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom: Line Items (Full Width) -->
+    <div class="panel mt-20" th:if="${selectedInvoice != null}">
+      <div class="panel__head">
+        <h3 class="panel__title">Line Items</h3>
+      </div>
+      <div class="panel__body">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+            <tr>
+              <th class="col-md">Category</th>
+              <th>Service</th>
+              <th class="col-md">Origin</th>
+              <th class="col-md">Discount</th>
+              <th class="col-md">Total</th>
+              <th class="col-lg">Usage</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            <tr th:if="${invoiceDetails == null || #lists.isEmpty(invoiceDetails)}">
+              <td colspan="6" class="td-muted">No details</td>
+            </tr>
+
+            <tr th:each="d : ${invoiceDetails}">
+              <td th:text="${d.categoryName}">-</td>
+              <td class="break-all" th:text="${d.serviceName}">-</td>
+              <td th:text="${d.originAmount}">0</td>
+              <td th:text="${d.discountAmount}">0</td>
+              <td class="amount-strong" th:text="${d.totalAmount}">0</td>
+              <td th:text="${d.usageRange}">-</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =======================
+       FAILURES TAB
+       ======================= -->
+  <div class="panel" th:if="${tab}=='failures'">
+    <div class="panel__head">
+      <h3 class="panel__title">Failures</h3>
+      <div class="panel__meta">
+        <span class="chip chip--neutral">Total: <strong th:text="${total}">0</strong></span>
+      </div>
+    </div>
+
+    <div class="panel__body">
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+          <tr>
+            <th class="col-md">Fail ID</th>
+            <th class="col-md">Attempt</th>
+            <th class="col-md">Category</th>
+            <th class="col-lg">Billing History ID</th>
+            <th class="col-lg">Error Code</th>
+            <th>Error Message</th>
+            <th class="col-md">Created</th>
+          </tr>
+          </thead>
+
+          <tbody>
+          <tr th:if="${fails == null || #lists.isEmpty(fails)}">
+            <td colspan="7" class="td-muted">No failures</td>
+          </tr>
+
+          <tr th:each="f : ${fails}">
+            <td th:text="${f.failId}">-</td>
+            <td th:text="${f.attemptId}">-</td>
+            <td th:text="${f.categoryName}">-</td>
+            <td th:text="${f.billingHistoryId}">-</td>
+            <td class="break-all" th:text="${f.errorCode}">-</td>
+            <td class="break-all" th:text="${f.errorMessageShort}">-</td>
+            <td th:text="${#temporals.format(f.createdAt, 'yyyy-MM-dd HH:mm')}">-</td>
+          </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pager">
+        <div class="pager__left">
+          Page <strong th:text="${page}">0</strong> / <strong th:text="${totalPages}">0</strong>
+        </div>
+        <div class="pager__right">
+          <a class="btn btn--small" th:classappend="${page<=0} ? ' is-disabled' : ''"
+             th:href="@{/bills(tab='failures', billing_yyyymm=${billing_yyyymm}, attempt_id=${attempt_id}, error_code=${error_code}, page=${page-1}, size=${size})}">
+            Prev
+          </a>
+          <a class="btn btn--small" th:classappend="${page+1>=totalPages} ? ' is-disabled' : ''"
+             th:href="@{/bills(tab='failures', billing_yyyymm=${billing_yyyymm}, attempt_id=${attempt_id}, error_code=${error_code}, page=${page+1}, size=${size})}">
+            Next
+          </a>
+        </div>
+      </div>
+
+      <div class="hint mt-12" th:if="${fails != null && !#lists.isEmpty(fails)}">
+        * Error Message는 너무 길 수 있어 일부만 표시합니다. 전체 메시지가 필요하면 템플릿에서 f.errorMessage로 교체하세요.
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

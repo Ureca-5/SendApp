@@ -1,20 +1,26 @@
 package com.mycom.myapp.sendapp.admin.invoice.controller;
 
-import com.mycom.myapp.sendapp.admin.invoice.service.BillService;
+import java.util.List;
+
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.List;
+import com.mycom.myapp.sendapp.admin.invoice.service.BillService;
+import com.mycom.myapp.sendapp.invoice.render.InvoiceEmailRenderer;
 
 @Controller
 public class BillsController {
 
     private final BillService billService;
+    private final InvoiceEmailRenderer invoiceEmailRenderer;
 
-    public BillsController(BillService billService) {
+    public BillsController(BillService billService, InvoiceEmailRenderer invoiceEmailRenderer) {
         this.billService = billService;
+        this.invoiceEmailRenderer = invoiceEmailRenderer;
     }
 
     @GetMapping("/bills")
@@ -74,7 +80,7 @@ public class BillsController {
             model.addAttribute("selectedInvoice", null);
             model.addAttribute("invoiceDetails", List.of());
 
-            return "bills";
+            return "admin/bills";
         }
 
         // 4. Default: Invoices 탭 로직
@@ -97,7 +103,7 @@ public class BillsController {
 
         model.addAttribute("fails", List.of());
 
-        return "bills";
+        return "admin/bills";
     }
 
     // 탭 정규화 로직 변경: attempts -> invoices 리다이렉트 처리
@@ -126,5 +132,21 @@ public class BillsController {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+    
+    @GetMapping(value = "/bills/preview", produces = MediaType.TEXT_HTML_VALUE)
+    public ResponseEntity<String> preview(@RequestParam("invoice_id") Long invoiceId) {
+        if (invoiceId == null || invoiceId <= 0) {
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.TEXT_PLAIN)
+                    .body("invalid invoice_id");
+        }
+
+        String html = invoiceEmailRenderer.renderHtml(invoiceId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.TEXT_HTML)
+                .header("Cache-Control", "no-store")
+                .body(html);
     }
 }

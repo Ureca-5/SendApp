@@ -45,7 +45,7 @@ public class BatchJobsController {
             model.addAttribute("rows", batchAttemptDao.listRecentWithLastFail(ym, limit));
         }
 
-        return "batch-jobs";
+        return "admin/batch-jobs";
     }
 
     private static String normalizeTab(String tab) {

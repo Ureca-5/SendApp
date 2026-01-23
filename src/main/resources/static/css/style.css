@@ -94,6 +94,7 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 20px;
+  min-width: 0; /* ✅ 테이블 overflow가 body를 밀지 않게 */
 }
 
 /* Footer: 항상 바닥에 고정 */
@@ -168,6 +169,7 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
+  min-width: 0; /* ✅ grid/flex 안에서 overflow 새는거 방지 */
 }
 
 .panel__head {
@@ -187,7 +189,7 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   padding-left: 12px;
 }
 
-.panel__body { padding: 25px; }
+.panel__body { padding: 25px; min-width: 0; } /* ✅ */
 
 /* =========================================
    5. UI Components (Cards, Buttons, Tables)
@@ -284,29 +286,75 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .label { font-size: 12px; font-weight: 600; color: var(--text-muted); }
 
-/* Tables */
+/* =========================================
+   Tables (Theme-aligned + 깨짐 방지)
+   ========================================= */
 .table-wrap {
   width: 100%;
   overflow-x: auto;
-  border-top: 1px solid var(--border);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+  min-width: 0; /* ✅ */
 }
-.table { width: 100%; border-collapse: collapse; min-width: 800px; }
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 800px; /* 유지: 컬럼 많을 때 스크롤 유도 */
+}
+
+/* Header */
 .table th {
-  background: #fafafa;
-  color: #333;
-  font-weight: bold;
-  padding: 12px 15px;
+  background: #ffffff;
+  color: var(--text-main);
+  font-weight: 900;
+  padding: 12px 14px;
   text-align: left;
-  border-bottom: 2px solid #555; /* 헤더 강조 */
-  font-size: 13px;
+  font-size: 12px;
+  letter-spacing: -0.2px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
+
+/* Subtle header tone (accent-soft 라인) */
+.table thead th {
+  box-shadow: inset 0 -1px 0 var(--border), inset 0 3px 0 var(--accent-soft);
+}
+
+/* Body */
 .table td {
-  padding: 12px 15px;
-  border-bottom: 1px solid #eee;
-  color: #555;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-main);
   vertical-align: middle;
+  background: #fff;
 }
-.td-muted { color: #999; text-align: center; padding: 40px !important; }
+
+/* last row border cleanup */
+.table tbody tr:last-child td { border-bottom: 0; }
+
+/* zebra */
+.table tbody tr:nth-child(even) td { background: var(--panel-secondary); }
+
+/* hover (전체 UI 톤 통일) */
+.table tbody tr:hover td { 
+  background: #fcfcff;   /* 이전 사용하던 아주 옅은 톤 */
+}
+
+.table tr.is-selected td {
+  background: #fcfcff;
+}
+
+
+/* Empty cell */
+.td-muted {
+  color: var(--text-muted);
+  text-align: center;
+  padding: 36px !important;
+  background: #fff;
+}
 
 /* Pagination */
 .pager {
@@ -509,18 +557,17 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 .btn-icon:hover { background: var(--panel-secondary); }
 
-/* ---- 8-6) Table UX improvements ---- */
-.table tr:hover td { background: #fcfcff; } /* subtle */
+/* ---- 8-6) Table UX improvements (테마에 맞춰 최소만) ---- */
 .table td .actions { display: inline-flex; gap: 8px; align-items: center; }
 .table td .link {
   color: var(--accent);
-  font-weight: 700;
+  font-weight: 900;
 }
 .table td .link:hover { color: var(--accent-hover); text-decoration: underline; }
 
 /* sticky header option */
 .table-wrap.is-sticky {
-  max-height: 520px; /* 화면에 맞게 조정 가능 */
+  max-height: 520px;
   overflow: auto;
 }
 .table-wrap.is-sticky .table th {
@@ -597,11 +644,14 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 
 /* ---- 8-10) Layout helper: split panels (상단/하단 2열) ---- */
+/* ✅ 깨짐 방지 핵심: minmax(0,1fr) */
 .split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 20px;
 }
+.split > * { min-width: 0; } /* ✅ */
+
 @media (max-width: 1200px) {
   .split { grid-template-columns: 1fr; }
   .kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -701,7 +751,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 
 /* Table selection highlight */
-.table tr.is-selected td { background: var(--accent-soft); }
 
 /* Bills list helpers */
 .bills-table td { vertical-align: top; }
@@ -735,13 +784,12 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .preview-wrap { max-width: 980px; margin: 0 auto; }
 .preview-phone { max-width: 520px; margin: 0 auto; }
 
-
 /* Split layout: narrow right panel */
-.split--narrow-right { grid-template-columns: 1fr 420px; }
+/* ✅ 깨짐 방지: 왼쪽은 반드시 minmax(0,1fr) */
+.split--narrow-right { grid-template-columns: minmax(0, 1fr) 420px; }
 @media (max-width: 1100px) { .split--narrow-right { grid-template-columns: 1fr; } }
 
 .user-name { font-weight: 800; color: var(--text-main); }
-
 
 /* Bills list panel */
 .panel--list { border: 1px solid var(--border); }
@@ -760,9 +808,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   .truncate { max-width: 240px; }
 }
 
-
-/* style.css 기존 내용 유지 후 아래 내용 추가/수정 */
-
 /* =========================================
    10. Refactored Layout Utilities
    ========================================= */
@@ -776,11 +821,9 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 
 /* Split Layout Variants */
-/* 기본 .split (1:1) 외에 비율 조정 버전 추가 */
 .split--auto-fixed {
-  grid-template-columns: 1fr 420px; /* 왼쪽 가변, 오른쪽 고정 */
+  grid-template-columns: minmax(0, 1fr) 420px; /* ✅ 왼쪽 줄어들 수 있게 */
 }
-
 @media (max-width: 1100px) {
   .split--auto-fixed { grid-template-columns: 1fr; }
 }
@@ -790,7 +833,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .mt-0 { margin-top: 0 !important; }
 
 /* Filterbar Label Consistency */
-/* form 내부의 label, div.label 모두 대응하되 가급적 label 태그 권장 */
 .filterbar .label {
   display: block;
   font-size: 12px;

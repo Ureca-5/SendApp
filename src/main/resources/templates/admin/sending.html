@@ -1,14 +1,11 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::#content})}">
+      th:replace="~{admin/layout :: layout(~{::#content})}">
 <body>
 <section id="content" th:with="pageTitle='SENDING', activeMenu='sending'">
 
   <div class="pagehead">
     <div>
-      <div class="pagehead__sub">
-        발송 상태(Status) / 시도 이력(History) / 월 집계(Summary)를 조회합니다.
-      </div>
     </div>
     <div class="pagehead__right panel__meta">
       <span class="chip chip--neutral" id="js-current-tab">TAB: <strong th:text="${tab}">status</strong></span>

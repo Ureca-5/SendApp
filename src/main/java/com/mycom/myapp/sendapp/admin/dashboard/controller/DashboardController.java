@@ -48,6 +48,6 @@ public class DashboardController {
         model.addAttribute("batchLatestAttempt", view.batchLatestAttempt());
         model.addAttribute("recentSendingHistory", view.recentSendingHistory());
 
-        return "dashboard";
+        return "admin/dashboard";
     }
 }
