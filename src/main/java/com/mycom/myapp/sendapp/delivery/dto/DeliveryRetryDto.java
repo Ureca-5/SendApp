@@ -17,4 +17,6 @@ public class DeliveryRetryDto {
     private Long totalAmount;
     private String recipientName; // delivery_user.name
     private String receiverInfo;  // delivery_user.email (or phone)
+    private String email;
+    private String phone;
 }

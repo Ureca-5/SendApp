@@ -4,6 +4,7 @@ package com.mycom.myapp.sendapp.delivery.service;
 import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.WAITING_STREAM;
 
 import java.text.DecimalFormat;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.HashMap;
@@ -72,8 +73,12 @@ public class DeliveryLoaderService {
                 .collect(Collectors.toList());
 
         // 4. [DB 중복 방지] try-catch로 감싸서 한 건의 중복으로 전체 배치가 죽는 것을 방지
+        String initialTime = LocalDateTime.now().toString(); 
+        String finalRequestedAt = initialTime;
         try {
+        	
             deliveryStatusRepository.saveAllIgnore(statusList);
+            finalRequestedAt = LocalDateTime.now().toString();
             log.info("DB(delivery_status) 저장 완료: {}건", items.size());
         } catch (Exception e) {
             // DuplicateKeyException 등을 잡아서 로그만 남기고 진행 (혹은 개별 Insert 로직으로 Fallback)
@@ -82,6 +87,8 @@ public class DeliveryLoaderService {
 
 
         // 3. [Redis 작업] Pipelined를 통한 대량 적재
+        final String timeForRedis = finalRequestedAt;
+        
         stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
             for (MonthlyInvoiceRowDto item : items) {
                 
@@ -107,7 +114,8 @@ public class DeliveryLoaderService {
                 streamMap.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
                 streamMap.put("total_amount", formatMoney(item.getTotalAmount()));
                 // 필요시 더 많은 필드 추가 가능 (MapRecord라 유연함)
-
+                streamMap.put("requested_at", timeForRedis);
+                
                 // 6. [MapRecord 생성]
                 MapRecord<String, String, String> record = StreamRecords.newRecord()
                         .in(WAITING_STREAM) // 상수로 관리되는 Key

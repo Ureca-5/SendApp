@@ -220,13 +220,10 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
             }
 
             try {
-                // TODO: subscribe_service_id -> invoice_category_id 매핑 정책이 확정되면 교체
-                int categoryId = CATEGORY_PLAN;
-
                 MonthlyInvoiceDetailRowDto d = MonthlyInvoiceDetailRowDto.builder()
                         .detailId(null)
                         .invoiceId(header.getInvoiceId())
-                        .invoiceCategoryId(categoryId)
+                        .invoiceCategoryId(s.getSubscribeCategoryId())
                         .billingHistoryId(s.getSubscribeBillingHistoryId())
                         .serviceName(s.getServiceName())
                         .originAmount(nvl(s.getOriginAmount()))
@@ -241,7 +238,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
                 buffer.add(d);
 
                 // 헤더 합계 누적
-                addToHeaderTotals(header, categoryId, d.getOriginAmount(), d.getDiscountAmount(), d.getTotalAmount());
+                addToHeaderTotals(header, d.getInvoiceCategoryId(), d.getOriginAmount(), d.getDiscountAmount(), d.getTotalAmount());
 
                 if (buffer.size() >= SUB_DETAIL_BATCH_SIZE) {
                     monthlyInvoiceDetailRepository.batchInsert(buffer);
