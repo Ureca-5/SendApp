@@ -2,7 +2,7 @@ package com.mycom.myapp.sendapp.admin.batchjobs.dto;
 
 import java.time.LocalDateTime;
 
-public record BatchAttemptRowDTO(
+public record BatchAttemptRowVM(
         long attemptId,
         int targetYyyymm,
         String executionStatus,
@@ -14,5 +14,5 @@ public record BatchAttemptRowDTO(
         long successCount,
         long failCount,
         String hostName,
-        String errorMessage
+        String lastFailSummary
 ) {}

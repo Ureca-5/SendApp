@@ -35,25 +35,34 @@ public class BillDao {
         return result == null ? 0 : result;
     }
 
+    /**
+     * ✅ Service에서 사용하는 표준 메서드명 (bills.html용)
+     */
+    public List<BillRowRawDTO> list(Integer billingYyyymm, String keyword, Long invoiceId, int size, int offset) {
+        return find(billingYyyymm, keyword, invoiceId, size, offset);
+    }
+
+    /**
+     * ✅ Service에서 사용하는 표준 메서드명 (bills.html용)
+     */
+    public BillRowRawDTO getBill(long invoiceId) {
+        return findOne(invoiceId);
+    }
+
+    /**
+     * (호환 유지) 기존 이름
+     */
     public List<BillRowRawDTO> find(Integer billingYyyymm, String keyword, Long invoiceId, int size, int offset) {
         StringBuilder sql = new StringBuilder("""
             SELECT
               mi.invoice_id,
               mi.users_id,
               mi.billing_yyyymm,
-
-              -- ✅ 최종 DB 컬럼명(total_*)을 화면 DTO의 의미에 맞게 alias
-              mi.total_plan_amount    AS plan_amount,
-              mi.total_addon_amount   AS addon_amount,
-              mi.total_etc_amount     AS etc_amount,
-              mi.total_discount_amount AS discount_amount,
               mi.total_amount,
-
+              mi.total_discount_amount,
               mi.due_date,
               mi.created_at,
-
-              u.name  AS user_name,
-              u.phone AS phone_enc
+              u.name AS user_name
             FROM monthly_invoice mi
             JOIN users u ON mi.users_id = u.users_id
             WHERE 1=1
@@ -71,11 +80,8 @@ public class BillDao {
             long usersId = rs.getLong("users_id");
             int yyyymm = rs.getInt("billing_yyyymm");
 
-            long planAmount = rs.getLong("plan_amount");
-            long addonAmount = rs.getLong("addon_amount");
-            long etcAmount = rs.getLong("etc_amount");
-            long discountAmount = rs.getLong("discount_amount");
             long totalAmount = rs.getLong("total_amount");
+            long totalDiscountAmount = rs.getLong("total_discount_amount");
 
             Date dueDateSql = rs.getDate("due_date");
             LocalDate dueDate = dueDateSql == null ? null : dueDateSql.toLocalDate();
@@ -84,31 +90,29 @@ public class BillDao {
             LocalDateTime createdAt = createdAtSql == null ? null : createdAtSql.toLocalDateTime();
 
             String userName = rs.getString("user_name");
-            String phoneEnc = rs.getString("phone_enc");
 
             return new BillRowRawDTO(
-                invoiceIdVal,
-                usersId,
-                yyyymm,
-                planAmount,
-                addonAmount,
-                etcAmount,
-                discountAmount,
-                totalAmount,
-                dueDate,
-                createdAt,
-                userName,
-                phoneEnc
+                    invoiceIdVal,
+                    usersId,
+                    yyyymm,
+                    totalAmount,
+                    totalDiscountAmount,
+                    dueDate,
+                    createdAt,
+                    userName
             );
         });
     }
 
-public BillRowRawDTO findOne(long invoiceId) {
-    List<BillRowRawDTO> rows = find(null, null, invoiceId, 1, 0);
-    return rows.isEmpty() ? null : rows.get(0);
-}
+    /**
+     * (호환 유지) 기존 이름
+     */
+    public BillRowRawDTO findOne(long invoiceId) {
+        List<BillRowRawDTO> rows = find(null, null, invoiceId, 1, 0);
+        return rows.isEmpty() ? null : rows.get(0);
+    }
 
-private void applyWhere(StringBuilder sql, List<Object> args, Integer billingYyyymm, String keyword, Long invoiceId) {
+    private void applyWhere(StringBuilder sql, List<Object> args, Integer billingYyyymm, String keyword, Long invoiceId) {
         if (billingYyyymm != null) {
             sql.append(" AND mi.billing_yyyymm = ? ");
             args.add(billingYyyymm);

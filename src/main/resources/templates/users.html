@@ -101,10 +101,11 @@
             </td>
 
             <td class="ta-center">
-              <a class="btn btn--ghost"
-                 th:href="@{/invoices(users_id=${u.usersId()}, billing_yyyymm=${billing_yyyymm})}">
-                Invoices
-              </a>
+              <a class="btn btn-sm"
+   th:href="@{/bills(tab='invoices', keyword=${u.usersId}, billing_yyyymm=${billing_yyyymm})}">
+  청구서
+</a>
+
             </td>
           </tr>
           </tbody>

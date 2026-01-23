@@ -1,39 +1,38 @@
 package com.mycom.myapp.sendapp.admin.batchjobs.service;
 
-import com.mycom.myapp.sendapp.admin.batchjobs.dao.BatchJobsDao;
-import com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowDTO;
-import com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchFailureRowDTO;
+import com.mycom.myapp.sendapp.admin.batchjobs.dao.BatchAttemptDao;
+import com.mycom.myapp.sendapp.admin.batchjobs.dao.BatchjobsFailDao;
+import com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchAttemptRowVM;
+import com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchFailRowVM;
+import com.mycom.myapp.sendapp.admin.batchjobs.dto.BatchJobStatusStatDTO;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
-
-import org.springframework.stereotype.Service;
 
 @Service
 public class BatchJobsService {
 
-    private final BatchJobsDao batchJobsDao;
+    private final BatchAttemptDao attemptDao;
+    private final BatchjobsFailDao failDao;
 
-    public BatchJobsService(BatchJobsDao batchJobsDao) {
-        this.batchJobsDao = batchJobsDao;
+    public BatchJobsService(BatchAttemptDao attemptDao, BatchjobsFailDao failDao) {
+        this.attemptDao = attemptDao;
+        this.failDao = failDao;
     }
 
-    public List<BatchJobsDao.StatusCountRow> statusStats(int billingYyyymm) {
-        return batchJobsDao.statusStats(billingYyyymm);
+    public List<BatchJobStatusStatDTO> stats(int yyyymm) {
+        return attemptDao.statsByStatus(yyyymm);
     }
 
-    public List<BatchAttemptRowDTO> listAttemptsRecent(int billingYyyymm, int limit) {
-        return batchJobsDao.listAttemptsRecent(billingYyyymm, limit);
-    }
-
-    public BatchAttemptRowDTO readAttempt(long attemptId) {
-        return batchJobsDao.readAttempt(attemptId);
+    public List<BatchAttemptRowVM> recentAttempts(int yyyymm, int limit) {
+        return attemptDao.listRecentWithLastFail(yyyymm, limit);
     }
 
     /**
-     * ⚠️ 실패 목록 테이블(정산 실패 이력)이 확정되기 전까지는 empty로 두는 게 안전.
-     * DB 계약이 확정되면 DAO 쿼리를 채우면 됨.
+     * fail 테이블은 target_yyyymm가 없으므로 attempt JOIN으로 월 필터링.
+     * attemptId는 선택(optional).
      */
-    public List<BatchFailureRowDTO> listFailures(long attemptId, int limit) {
-        return batchJobsDao.listFailures(attemptId, limit);
+    public List<BatchFailRowVM> fails(int yyyymm, Long attemptId, int limit) {
+        return failDao.listFailsByYyyymm(yyyymm, attemptId, limit);
     }
 }

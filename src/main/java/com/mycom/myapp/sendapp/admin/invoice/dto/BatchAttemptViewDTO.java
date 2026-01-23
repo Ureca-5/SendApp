@@ -1,18 +1,20 @@
-package com.mycom.myapp.sendapp.admin.batchjobs.dto;
+package com.mycom.myapp.sendapp.admin.invoice.dto;
 
 import java.time.LocalDateTime;
 
-public record BatchAttemptRowDTO(
+public record BatchAttemptViewDTO(
         long attemptId,
         int targetYyyymm,
         String executionStatus,
         String executionType,
-        LocalDateTime startedAt,
-        LocalDateTime endedAt,
-        Long durationMs,
         long targetCount,
         long successCount,
         long failCount,
+        String successRate,
+        Long durationMs,
+        String durationText,
         String hostName,
-        String errorMessage
-) {}
+        LocalDateTime startedAt,
+        LocalDateTime endedAt
+) {
+}
