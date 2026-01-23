@@ -97,9 +97,10 @@ public class DeliveryStatusRepository {
 
     // [Loader용] 중복 무시 저장 (INSERT IGNORE)
     public void saveAllIgnore(List<DeliveryStatus> statusList) {
+        // ★ scheduled_at 컬럼 추가
         String sql = "INSERT IGNORE INTO delivery_status " +
-                     "(invoice_id, status, delivery_channel, retry_count, last_attempt_at, created_at) " +
-                     "VALUES (?, ?, ?, ?, ?, ?)";
+                     "(invoice_id, status, delivery_channel, retry_count, last_attempt_at, created_at, scheduled_at) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
@@ -113,6 +114,8 @@ public class DeliveryStatusRepository {
                 ps.setInt(4, 0); 
                 ps.setTimestamp(5, now); 
                 ps.setTimestamp(6, now);
+                // ★ 예약 시간이 있으면 넣고, 없으면 NULL
+                ps.setTimestamp(7, status.getScheduledAt() != null ? Timestamp.valueOf(status.getScheduledAt()) : null);
             }
             @Override
             public int getBatchSize() {
@@ -264,7 +267,53 @@ public class DeliveryStatusRepository {
             invoiceId
         );
     }
+    // ==========================================
+    // [Scheduler용] 예약 발송 대상 조회
+    // ==========================================
+    public List<DeliveryRetryDto> findScheduledTargets(LocalDateTime now) {
+        String sql = """
+            SELECT 
+                ds.invoice_id,
+                u.email, u.phone, u.name,
+                mi.total_amount, mi.billing_yyyymm
+            FROM delivery_status ds
+            INNER JOIN monthly_invoice mi ON ds.invoice_id = mi.invoice_id
+            INNER JOIN users u ON mi.users_id = u.users_id
+            WHERE ds.status = 'SCHEDULED' 
+              AND ds.scheduled_at <= ?
+        """;
+        
+        // DeliveryRetryDto를 재활용하여 매핑
+        return jdbcTemplate.query(sql, (rs, rowNum) -> DeliveryRetryDto.builder()
+                .invoiceId(rs.getLong("invoice_id"))
+                .deliveryChannel("EMAIL") // 예약은 기본 EMAIL로 가정
+                .retryCount(0)            // 첫 시도
+                .email(rs.getString("email"))
+                .phone(rs.getString("phone"))
+                .recipientName(rs.getString("name"))
+                .totalAmount(rs.getLong("total_amount"))
+                .billingYyyymm(String.valueOf(rs.getInt("billing_yyyymm")))
+                .receiverInfo(rs.getString("email")) // 기본 수신 정보
+                .build()
+        , Timestamp.valueOf(now));
+    }
     
+    // ==========================================
+    // [Scheduler용] 상태 일괄 변경 (SCHEDULED -> READY)
+    // ==========================================
+    public void updateStatusToReadyBatch(List<Long> invoiceIds) {
+        if (invoiceIds.isEmpty()) return;
+        String sql = "UPDATE delivery_status SET status = 'READY', last_attempt_at = NOW() WHERE invoice_id = ?";
+        
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                ps.setLong(1, invoiceIds.get(i));
+            }
+            @Override
+            public int getBatchSize() { return invoiceIds.size(); }
+        });
+    }
     /**
      * 내부 정적 RowMapper 클래스
      */

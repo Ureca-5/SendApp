@@ -16,4 +16,6 @@ public class DeliveryUser {
     private String email;       // email
     private String phone;       // phone
     private Boolean isWithdrawn;// is_withdrawn (필요 시 사용)
+    private Integer preferredHour; //선호 시간
+    private Integer preferredDay; //선호 발송일
 }

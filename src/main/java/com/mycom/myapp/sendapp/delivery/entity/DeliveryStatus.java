@@ -22,4 +22,5 @@ public class DeliveryStatus {
     private Integer retryCount;
     private LocalDateTime lastAttemptAt;
     private LocalDateTime createdAt;
+    private LocalDateTime scheduledAt; //예약 발송 시간 (예약 아니면 NULL)
 }
