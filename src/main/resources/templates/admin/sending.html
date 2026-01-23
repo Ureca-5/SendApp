@@ -134,7 +134,7 @@
               <td class="ta-right amount-strong" th:text="${s.totalAmount != null ? s.totalAmount : '-'}">-</td>
               <td th:text="${s.lastAttemptAt != null ? #temporals.format(s.lastAttemptAt, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
               <td>
-                <a class="btn btn-sm"
+                <a class="btn btn--small"
                    th:href="@{/sending(tab='history', billing_yyyymm=${billing_yyyymm}, invoice_id=${s.invoiceId})}">
                   과거내역
                 </a>

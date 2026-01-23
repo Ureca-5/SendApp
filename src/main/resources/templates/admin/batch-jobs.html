@@ -7,7 +7,7 @@
 
   <div class="pagehead">
     <div>
-      <h2 style="margin:0;">Batch Jobs</h2>
+      <h2>Batch Jobs</h2>
       <div class="pagehead__sub">배치 실행 현황(통계/최근 실행/실패)을 확인합니다.</div>
     </div>
     <div class="pagehead__right panel__meta">
@@ -55,7 +55,7 @@
             <div class="panel__meta"><span class="hint">yyyymm / limit / (fails: attemptId)</span></div>
           </div>
           <div class="panel__body">
-            <form class="filterbar mt-0 mb-0" style="border:none; padding:0; background:transparent;" th:action="@{/batch-jobs}" method="get">
+            <form class="filterbar filterbar--flat mt-0 mb-0" th:action="@{/batch-jobs}" method="get">
               <div class="filterbar__row">
                 <div class="field">
                   <label class="label">yyyymm</label>
@@ -74,7 +74,7 @@
 
                 <div class="field field--actions">
                     <label class="label">&nbsp;</label>
-                    <div style="display:flex; gap:8px;">
+                    <div class="flex-row flex-row--tight">
                         <button class="btn btn--primary" type="submit">Apply</button>
                         <a class="btn btn--ghost" th:href="@{/batch-jobs(tab=${tab})}">Reset</a>
                     </div>
@@ -94,7 +94,7 @@
   <div th:if="${stats == null or #lists.isEmpty(stats)}" class="hint">데이터 없음</div>
 
   <div th:each="s : ${stats}"
-       style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border, #e0e0e0);">
+       class="statline">
     <span class="chip mono"
           th:text="${s.status}"
           th:classappend="${
@@ -104,7 +104,7 @@
             ? ' chip--danger' : ' chip--neutral')
           }">SUCCESS</span>
 
-    <span class="mono" style="font-size:16px; font-weight:700;"
+    <span class="mono statline__value"
           th:text="${s.cnt}">10</span>
   </div>
 </div>
@@ -174,7 +174,7 @@
                   <td class="break-all mono" th:text="${r.lastFailSummary} ?: '-'">-</td>
 
                   <td>
-                    <a class="btn btn-sm btn--ghost"
+                    <a class="btn btn--small btn--ghost"
                        th:href="@{/batch-jobs(tab='fails', yyyymm=${yyyymm}, attemptId=${r.attemptId}, limit=${limit})}">
                       fails
                     </a>

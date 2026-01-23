@@ -302,7 +302,8 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 800px; /* 유지: 컬럼 많을 때 스크롤 유도 */
+  /* dashboard 같은 좁은 패널에서도 테이블이 "불필요하게" 가로 스크롤/잘림이 생기지 않게 기본 min-width 제거 */
+  min-width: 0;
 }
 
 /* Header */
@@ -753,6 +754,9 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 /* Table selection highlight */
 
 /* Bills list helpers */
+/* Bills 화면은 컬럼이 많아서 기본적으로 가로 스크롤을 유도 */
+.bills-table { min-width: 980px; }
+
 .bills-table td { vertical-align: top; }
 .bill-title { font-weight: 800; color: var(--text-main); }
 .bill-meta { font-size: 12px; color: var(--text-muted); }
