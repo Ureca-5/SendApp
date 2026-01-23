@@ -48,6 +48,6 @@ public class UserController {
         model.addAttribute("phone", phone);
         model.addAttribute("withdrawn", withdrawn);
 
-        return "users";
+        return "admin/users";
     }
 }

@@ -45,7 +45,7 @@ public class SendingController {
                     (invoiceId == null) ? List.of() : sendingService.history(invoiceId));
             model.addAttribute("deliveryStatuses", List.of());
             model.addAttribute("deliverySummaries", List.of());
-            return "sending";
+            return "admin/sending";
         }
 
         // summary 탭
@@ -53,7 +53,7 @@ public class SendingController {
             model.addAttribute("deliverySummaries", sendingService.summaries(billingYyyymm));
             model.addAttribute("deliveryStatuses", List.of());
             model.addAttribute("deliveryHistories", List.of());
-            return "sending";
+            return "admin/sending";
         }
 
         // status 탭
@@ -70,6 +70,6 @@ public class SendingController {
         model.addAttribute("deliveryHistories", List.of());
         model.addAttribute("deliverySummaries", List.of());
 
-        return "sending";
+        return "admin/sending";
     }
 }

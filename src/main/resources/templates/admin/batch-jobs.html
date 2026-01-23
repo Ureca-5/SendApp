@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="ko" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::#content})}">
+      th:replace="~{admin/layout :: layout(~{::#content})}">
 <body>
 <section id="content" class="content"
          th:with="pageTitle='BATCH JOBS', activeMenu='batch-jobs'">
@@ -63,11 +63,6 @@
                          th:value="${yyyymm}" data-numeric="true"/>
                 </div>
 
-                <div class="field">
-                  <label class="label">limit</label>
-                  <input class="input w-120" name="limit" type="text" placeholder="50"
-                         th:value="${limit}" data-numeric="true"/>
-                </div>
 
                 <div class="field" th:if="${tab == 'fails'}">
                   <label class="label">attemptId (opt)</label>
