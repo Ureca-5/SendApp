@@ -166,7 +166,7 @@ public class SubscriptionSegmentCalculator {
                         throw new IllegalArgumentException("원천 데이터 식별자 "+buffer.get(i).getSubscribeBillingHistoryId()+"번의 세그먼트 시작 일자가 종료 일자보다 이후입니다.");
                     }
 
-                    BigDecimal usageRate = BigDecimal.valueOf(segStart.getDayOfMonth())  // 분자 (long -> BigDecimal)
+                    BigDecimal usageRate = BigDecimal.valueOf(segEnd.getDayOfMonth() - segStart.getDayOfMonth() + 1)  // 분자 (long -> BigDecimal)
                             .divide(
                                     BigDecimal.valueOf(monthLength),      // 분모 (int -> BigDecimal)
                                     10,                                   // 소수점 자리수 (Scale, 넉넉하게 설정)
