@@ -4,8 +4,9 @@ import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceBatchFailRowDto;
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscribeBillingHistoryRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscriptionSegmentDto;
-import lombok.Getter;
-import lombok.Setter;
+import com.mycom.myapp.sendapp.batch.enums.ServiceCategory;
+import com.mycom.myapp.sendapp.batch.support.CategoryIdRegistry;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -25,8 +26,9 @@ import java.util.*;
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class SubscriptionSegmentCalculator {
-    private static final int ADDON_CATEGORY_ID = 2;
+    private final CategoryIdRegistry categoryIdRegistry;
 
     /**
      * chunk 단위 구독 원천 데이터(rows)를 받아 세그먼트 목록을 생성합니다.
@@ -110,6 +112,7 @@ public class SubscriptionSegmentCalculator {
 
         int monthLength = periodStart.lengthOfMonth(); // 해당 년월의 일수
 
+        int addonCategoryId = categoryIdRegistry.getCategoryId(ServiceCategory.ADDON);
         boolean isPlanSettlementSuccess = true;
         for (int i = 0; i < buffer.size(); i++) {
             SubscribeBillingHistoryRowDto cur = buffer.get(i);
@@ -117,7 +120,7 @@ public class SubscriptionSegmentCalculator {
             LocalDate rawStart = cur.getSubscriptionStartDate();
             LocalDate segStart = rawStart.isBefore(periodStart) ? periodStart : rawStart;
 
-            if(cur.getSubscribeCategoryId() == ADDON_CATEGORY_ID) {
+            if(cur.getSubscribeCategoryId() == addonCategoryId) {
                 // 부가서비스 정산
                 // 부가서비스는 이용 기간 세그먼트 계산을 하지 않는다.
                 try {
@@ -154,7 +157,7 @@ public class SubscriptionSegmentCalculator {
                     int nextSegDataIndx = i + 1;
                     while(nextSegDataIndx < buffer.size()) {
                         SubscribeBillingHistoryRowDto nextRowDto = buffer.get(nextSegDataIndx++);
-                        if(nextRowDto.getSubscribeCategoryId() != ADDON_CATEGORY_ID) {
+                        if(nextRowDto.getSubscribeCategoryId() != addonCategoryId) {
                             foundNextPlan = true;
                             LocalDate nextStartMinus1 = nextRowDto.getSubscriptionStartDate().minusDays(1);
                             segEnd = nextStartMinus1.isAfter(periodEnd) ? periodEnd : nextStartMinus1;

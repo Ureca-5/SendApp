@@ -2,6 +2,7 @@ package com.mycom.myapp.sendapp.batch.writer;
 
 import com.mycom.myapp.sendapp.batch.calculator.SubscriptionSegmentCalculator;
 import com.mycom.myapp.sendapp.batch.dto.*;
+import com.mycom.myapp.sendapp.batch.enums.ServiceCategory;
 import com.mycom.myapp.sendapp.batch.enums.SettlementStatus;
 import com.mycom.myapp.sendapp.batch.repository.attempt.ChunkSettlementResultDto;
 import com.mycom.myapp.sendapp.batch.repository.attempt.MonthlyInvoiceBatchAttemptJdbcRepository;
@@ -12,7 +13,9 @@ import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementFail
 import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementStatusHistoryRepository;
 import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementStatusRepository;
 import com.mycom.myapp.sendapp.batch.repository.subscribe.SubscribeBillingHistoryRepository;
+import com.mycom.myapp.sendapp.batch.support.CategoryIdRegistry;
 import com.mycom.myapp.sendapp.batch.support.ChunkHeaderBuffer;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -69,17 +72,14 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
     @Value("#{jobExecutionContext['monthlyInvoiceAttemptId']}")
     private Long attemptId;
 
-    // invoice_category_id 고정값 (현재 테이블 기준)
-    private static final int CATEGORY_PLAN = 1;          // 요금제
-    private static final int CATEGORY_ADDON = 2;         // 부가서비스
-    private static final int CATEGORY_ETC_PLAN = 3;      // 기타요금제
-    private static final int CATEGORY_MICRO_PAYMENT = 4; // 단건 결제
+    private final CategoryIdRegistry categoryIdRegistry;
 
     // 마이크로 결제 페이징(키셋) page size
     private static final int MICRO_PAGE_SIZE = 5000;
 
     // 구독 상세 insert 배치 크기 (JDBC batch insert를 여러 번 쪼개 메모리 압박 감소)
     private static final int SUB_DETAIL_BATCH_SIZE = 5000;
+
 
     @Override
     public void write(Chunk<? extends MonthlyInvoiceRowDto> chunk) {
@@ -254,7 +254,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
                         .errorCode("SUB_DETAIL_BUILD_FAIL")
                         .errorMessage("temporary") // 임시 통일
                         .createdAt(now)
-                        .invoiceCategoryId(CATEGORY_PLAN)
+                        .invoiceCategoryId(s.getSubscribeCategoryId())
                         .billingHistoryId(s.getSubscribeBillingHistoryId())
                         .build());
             }
@@ -273,6 +273,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
             LocalDateTime now
     ) {
         Long lastSeenId = 0L;
+        int microCategoryId = categoryIdRegistry.getCategoryId(ServiceCategory.MICRO);
 
         while (true) {
             // repository는 "키셋 페이징"을 지원한다고 가정
@@ -298,7 +299,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
                     MonthlyInvoiceDetailRowDto d = MonthlyInvoiceDetailRowDto.builder()
                             .detailId(null)
                             .invoiceId(header.getInvoiceId())
-                            .invoiceCategoryId(CATEGORY_MICRO_PAYMENT)
+                            .invoiceCategoryId(microCategoryId)
                             .billingHistoryId(r.getMicroPaymentBillingHistoryId())
                             .serviceName(r.getServiceName())
                             .originAmount(nvl(r.getOriginAmount()))
@@ -312,7 +313,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
 
                     details.add(d);
 
-                    addToHeaderTotals(header, CATEGORY_MICRO_PAYMENT, d.getOriginAmount(), d.getDiscountAmount(), d.getTotalAmount());
+                    addToHeaderTotals(header, microCategoryId, d.getOriginAmount(), d.getDiscountAmount(), d.getTotalAmount());
                 } catch (Exception ex) {
                     header.setSettlementSuccess(false);
                     failRows.add(MonthlyInvoiceBatchFailRowDto.builder()
@@ -320,7 +321,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
                             .errorCode("MICRO_DETAIL_BUILD_FAIL")
                             .errorMessage("temporary") // 임시 통일
                             .createdAt(now)
-                            .invoiceCategoryId(CATEGORY_MICRO_PAYMENT)
+                            .invoiceCategoryId(microCategoryId)
                             .billingHistoryId(r.getMicroPaymentBillingHistoryId())
                             .build());
                 }
@@ -342,11 +343,12 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
         // totalDiscountAmount / totalAmount는 카테고리 상관 없이 누적
         header.setTotalDiscountAmount(nvl(header.getTotalDiscountAmount()) + nvl(discount));
         header.setTotalAmount(nvl(header.getTotalAmount()) + nvl(total));
-
+        int planCategoryId = categoryIdRegistry.getCategoryId(ServiceCategory.PLAN);
+        int addonCategoryId = categoryIdRegistry.getCategoryId(ServiceCategory.ADDON);
         // 카테고리별 합계는 정책에 맞춰 누적
-        if (categoryId == CATEGORY_PLAN) {
+        if (categoryId == planCategoryId) {
             header.setTotalPlanAmount(nvl(header.getTotalPlanAmount()) + nvl(origin));
-        } else if (categoryId == CATEGORY_ADDON) {
+        } else if (categoryId == addonCategoryId) {
             header.setTotalAddonAmount(nvl(header.getTotalAddonAmount()) + nvl(origin));
         } else {
             header.setTotalEtcAmount(nvl(header.getTotalEtcAmount()) + nvl(origin));
