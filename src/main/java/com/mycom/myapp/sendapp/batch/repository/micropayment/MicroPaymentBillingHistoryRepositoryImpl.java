@@ -81,4 +81,42 @@ public class MicroPaymentBillingHistoryRepositoryImpl implements MicroPaymentBil
                 .build(), args);
 
     }
+
+    @Override
+    public List<MicroPaymentBillingHistoryRowDto> findByIds(List<Long> billingHistoryIds) {
+        if (billingHistoryIds == null || billingHistoryIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String inClause = String.join(",", billingHistoryIds.stream().map(id -> "?").toArray(String[]::new));
+
+        String sql = String.format("""
+            SELECT
+                  micro_payment_billing_history_id,
+                  users_id,
+                  billing_yyyymm,
+                  micro_payment_service_id,
+                  service_name,
+                  origin_amount,
+                  discount_amount,
+                  total_amount,
+                  created_at
+            FROM micro_payment_billing_history
+            WHERE micro_payment_billing_history_id IN (%s)
+            """, inClause);
+
+        Object[] args = billingHistoryIds.toArray();
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> MicroPaymentBillingHistoryRowDto.builder()
+                .microPaymentBillingHistoryId(rs.getLong("micro_payment_billing_history_id"))
+                .usersId(rs.getLong("users_id"))
+                .billingYyyymm(rs.getInt("billing_yyyymm"))
+                .microPaymentServiceId(rs.getLong("micro_payment_service_id"))
+                .serviceName(rs.getString("service_name"))
+                .originAmount(rs.getLong("origin_amount"))
+                .discountAmount(rs.getLong("discount_amount"))
+                .totalAmount(rs.getLong("total_amount"))
+                .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
+                .build(), args);
+    }
 }

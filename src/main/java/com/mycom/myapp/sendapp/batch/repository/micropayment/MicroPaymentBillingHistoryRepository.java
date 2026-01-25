@@ -19,4 +19,9 @@ public interface MicroPaymentBillingHistoryRepository {
             Long lastId,
             Integer limit
     );
+
+    /**
+     * PK 목록으로 단건 결제 원천 데이터를 조회합니다.
+     */
+    List<MicroPaymentBillingHistoryRowDto> findByIds(List<Long> billingHistoryIds);
 }
