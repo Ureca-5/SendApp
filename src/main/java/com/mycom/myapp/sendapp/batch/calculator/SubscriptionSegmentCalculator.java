@@ -4,6 +4,8 @@ import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceBatchFailRowDto;
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscribeBillingHistoryRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscriptionSegmentDto;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -115,10 +117,10 @@ public class SubscriptionSegmentCalculator {
             LocalDate rawStart = cur.getSubscriptionStartDate();
             LocalDate segStart = rawStart.isBefore(periodStart) ? periodStart : rawStart;
 
-            try {
-                if(cur.getSubscribeCategoryId() == ADDON_CATEGORY_ID) {
-                    // 부가서비스 정산
-                    // 부가서비스는 이용 기간 세그먼트 계산을 하지 않는다.
+            if(cur.getSubscribeCategoryId() == ADDON_CATEGORY_ID) {
+                // 부가서비스 정산
+                // 부가서비스는 이용 기간 세그먼트 계산을 하지 않는다.
+                try {
                     out.add(SubscriptionSegmentDto.builder()
                             .usersId(usersId)
                             .deviceId(deviceId)
@@ -132,10 +134,14 @@ public class SubscriptionSegmentCalculator {
                             .discountAmount(cur.getDiscountAmount())
                             .totalAmount(cur.getTotalAmount())
                             .build());
-                } else {
-
-                    // 여기부터는 요금제 서비스 정산 로직
-
+                } catch (Exception e) {
+                    MonthlyInvoiceRowDto h = headerByUserId.get(usersId);
+                    if (h != null) h.setSettlementSuccess(false);
+                    failRows.add(toFailDto(cur, attemptId, "temporary"));
+                }
+            } else {
+                // 요금제 서비스 정산 로직
+                try {
                     if(isPlanSettlementSuccess == false) {
                         // 해당 유저의 특정 기기의 요금제 원천 데이터 정산 도중 한 번이라도 실패한 경우, 해당 기기의 모든 당월 요금제 정산을 실패 처리
                         // 재배치 시 세그먼트 확정 로직 단순성을 위함
@@ -198,17 +204,17 @@ public class SubscriptionSegmentCalculator {
                                     .totalAmount(totalAmount)
                                     .build()
                     );
+                } catch (Exception e) {
+                    isPlanSettlementSuccess = false; // 해당 유저의 해당 기기의 구독 서비스 정산 성공 여부 false 설정
+                    MonthlyInvoiceRowDto h = headerByUserId.get(usersId);
+                    if (h != null) h.setSettlementSuccess(false);
+                    // 이전에 정산에 성공한 요금제 데이터도 모두 실패로 간주: 모두 실패 이력 리스트에 추가
+                    for(SubscriptionSegmentDto dto : temp) {
+                        failRows.add(toFailDto(dto, attemptId, "temporary"));
+                    }
+                    temp.clear();
+                    failRows.add(toFailDto(cur, attemptId, "temporary"));
                 }
-            } catch (Exception e) {
-                isPlanSettlementSuccess = false; // 해당 유저의 해당 기기의 구독 서비스 정산 성공 여부 false 설정
-                MonthlyInvoiceRowDto h = headerByUserId.get(usersId);
-                if (h != null) h.setSettlementSuccess(false);
-                // 이전에 정산에 성공한 요금제 데이터도 모두 실패로 간주: 모두 실패 이력 리스트에 추가
-                for(SubscriptionSegmentDto dto : temp) {
-                    failRows.add(toFailDto(dto, attemptId, "temporary"));
-                }
-                temp.clear();
-                failRows.add(toFailDto(cur, attemptId, "temporary"));
             }
         }
         if(isPlanSettlementSuccess) {
