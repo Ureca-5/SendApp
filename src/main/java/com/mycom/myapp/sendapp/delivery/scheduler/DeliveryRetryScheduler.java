@@ -1,21 +1,26 @@
 package com.mycom.myapp.sendapp.delivery.scheduler;
 
-import com.mycom.myapp.sendapp.delivery.dto.DeliveryRetryDto; 
-import com.mycom.myapp.sendapp.delivery.repository.DeliveryStatusRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.connection.stream.MapRecord;
-import org.springframework.data.redis.connection.stream.StreamRecords;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.DELAY_ZSET;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.WAITING_STREAM;
+import org.redisson.api.RBatch;
+import org.redisson.api.RScoredSortedSetAsync;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mycom.myapp.sendapp.delivery.dto.DeliveryRetryDto;
+import com.mycom.myapp.sendapp.delivery.repository.DeliveryStatusRepository;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -23,91 +28,111 @@ import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.WAITING_S
 public class DeliveryRetryScheduler {
 
     private final DeliveryStatusRepository statusRepository;
-    private final StringRedisTemplate redisTemplate;
-    
-    private static final int MAX_RETRY_COUNT = 2; 
+    private final RedissonClient redissonClient;
+    private final ObjectMapper objectMapper;
 
-    // ★ 수정됨: "/10" -> "*/10" (10초마다) 또는 "0 * * * * *" (1분마다)
+    private static final int MAX_RETRY_COUNT = 2;
+    private static final int BAN_START_HOUR = 21; 
+    private static final int BAN_END_HOUR = 9;    
+
+    // ♻️ [재발송] 10초마다
     @Scheduled(cron = "*/10 * * * * *") 
     @Transactional
     public void retryFailedDeliveries() {
-        // 1. DTO로 조회 (JOIN된 데이터)
         List<DeliveryRetryDto> failedList = statusRepository.findRetryTargets(MAX_RETRY_COUNT);
+        if (failedList.isEmpty()) return;
 
-        if (failedList.isEmpty()) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime targetTime = adjustForBusinessHours(now);
+        boolean isNightBan = targetTime.isAfter(now);
+
+        // [CASE 1] 야간 금지 -> 내일 아침으로 연기
+        if (isNightBan) {
+            List<Long> ids = failedList.stream().map(DeliveryRetryDto::getInvoiceId).toList();
+            statusRepository.postponeDelivery(ids, targetTime);
+            log.info("🌙 [재발송 제한] 야간이라 {}건을 내일 아침({})으로 연기", ids.size(), targetTime);
             return;
         }
 
-        log.info("♻️ [재발송] 대상 {}건 발견. 복구 시작...", failedList.size());
+        // [CASE 2] 업무 시간 -> Redis Batch 적재
+        RBatch batch = redissonClient.createBatch();
+        RScoredSortedSetAsync<String> batchZset = batch.getScoredSortedSet(DELAY_ZSET, StringCodec.INSTANCE);
+        long delayUntil = System.currentTimeMillis() + 1000;
 
         for (DeliveryRetryDto dto : failedList) {
             try {
-                // 2. Redis 메시지 생성
-                Map<String, String> fieldMap = new HashMap<>();
-                fieldMap.put("invoice_id", String.valueOf(dto.getInvoiceId()));
-                fieldMap.put("delivery_channel", dto.getDeliveryChannel());
-                // 로그 확인용으로 +1 된 값을 Redis에 보냄
-                fieldMap.put("retry_count", String.valueOf(dto.getRetryCount() + 1)); 
-                fieldMap.put("email", dto.getEmail());
-                fieldMap.put("phone", dto.getPhone());
-                fieldMap.put("billing_yyyymm", dto.getBillingYyyymm());
-                fieldMap.put("recipient_name", dto.getRecipientName());
-                fieldMap.put("receiver_info", dto.getReceiverInfo());
-                fieldMap.put("total_amount", String.valueOf(dto.getTotalAmount()));
+                Map<String, String> payload = new HashMap<>();
+                payload.put("invoice_id", String.valueOf(dto.getInvoiceId()));
+                payload.put("delivery_channel", dto.getDeliveryChannel());
+                payload.put("retry_count", String.valueOf(dto.getRetryCount() + 1));
+                payload.put("email", dto.getEmail());
+                payload.put("phone", dto.getPhone());
+                payload.put("recipient_name", dto.getRecipientName());
+                payload.put("total_amount", String.valueOf(dto.getTotalAmount()));
+                payload.put("requested_at", now.toString());
 
-                // 3. Redis 적재
-                MapRecord<String, String, String> record = StreamRecords.mapBacked(fieldMap).withStreamKey(WAITING_STREAM);
-                redisTemplate.opsForStream().add(record);
-
-                // 4. DB 업데이트 (READY로 변경, 카운트 증가)
+                batchZset.addAsync(delayUntil, objectMapper.writeValueAsString(payload));
                 statusRepository.resetStatusToReady(dto.getInvoiceId(), dto.getRetryCount());
-
             } catch (Exception e) {
-                log.error("❌ 재발송 실패 (ID: {})", dto.getInvoiceId(), e);
+                log.error("❌ 재발송 실패 (ID: {})", dto.getInvoiceId());
             }
         }
-        
-        log.info("✅ [재발송] {}건 Redis 대기열 적재 완료", failedList.size());
+        batch.execute();
+        log.info("✅ [재발송] {}건 Redis 적재 완료", failedList.size());
     }
- // [Fallback 스케줄러] 이메일 3번 실패하면 SMS로 전환 (10초마다 체크)
+
+    // 🚨 [Fallback] 이메일 실패 -> SMS 전환
     @Scheduled(cron = "*/10 * * * * *") 
     @Transactional
     public void fallbackToSms() {
-        // 1. 3번 이상 실패한 이메일 건 조회 (폰번호 들고옴)
         List<DeliveryRetryDto> fallbackList = statusRepository.findFallbackTargets(MAX_RETRY_COUNT);
+        if (fallbackList.isEmpty()) return;
 
-        if (fallbackList.isEmpty()) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime targetTime = adjustForBusinessHours(now);
+        boolean isNightBan = targetTime.isAfter(now);
+
+        if (isNightBan) {
+            List<Long> ids = fallbackList.stream().map(DeliveryRetryDto::getInvoiceId).toList();
+            statusRepository.postponeDelivery(ids, targetTime);
+            log.info("🌙 [SMS전환 제한] 야간이라 {}건을 내일 아침으로 연기", ids.size());
             return;
         }
 
-        log.info("🚨 [채널 전환] 이메일 발송 실패 {}건 -> SMS로 전환 시도", fallbackList.size());
+        RBatch batch = redissonClient.createBatch();
+        RScoredSortedSetAsync<String> batchZset = batch.getScoredSortedSet(DELAY_ZSET, StringCodec.INSTANCE);
+        long delayUntil = System.currentTimeMillis() + 1000;
 
         for (DeliveryRetryDto dto : fallbackList) {
             try {
-                // 2. Redis 메시지 생성 (이미 DTO에 SMS, 폰번호가 들어있음)
-                Map<String, String> fieldMap = new HashMap<>();
-                fieldMap.put("invoice_id", String.valueOf(dto.getInvoiceId()));
-                fieldMap.put("delivery_channel", dto.getDeliveryChannel()); // "SMS"
-                
-                fieldMap.put("retry_count", String.valueOf(dto.getRetryCount()));
-                fieldMap.put("email", dto.getEmail());
-                fieldMap.put("phone", dto.getPhone());
-                fieldMap.put("billing_yyyymm", dto.getBillingYyyymm());
-                fieldMap.put("recipient_name", dto.getRecipientName());
-                fieldMap.put("receiver_info", dto.getReceiverInfo()); // 폰번호 (010-xxxx)
-                fieldMap.put("total_amount", String.valueOf(dto.getTotalAmount()));
+                Map<String, String> payload = new HashMap<>();
+                payload.put("invoice_id", String.valueOf(dto.getInvoiceId()));
+                payload.put("delivery_channel", "SMS");
+                payload.put("retry_count", "0");
+                payload.put("email", dto.getEmail());
+                payload.put("phone", dto.getPhone());
+                payload.put("recipient_name", dto.getRecipientName());
+                payload.put("total_amount", String.valueOf(dto.getTotalAmount()));
+                payload.put("requested_at", now.toString());
 
-                // 3. Redis 적재
-                MapRecord<String, String, String> record = StreamRecords.mapBacked(fieldMap).withStreamKey(WAITING_STREAM);
-                redisTemplate.opsForStream().add(record);
-
-                // 4. DB 업데이트 (채널 SMS로 변경, 카운트 0으로 초기화)
+                batchZset.addAsync(delayUntil, objectMapper.writeValueAsString(payload));
                 statusRepository.switchToSms(dto.getInvoiceId());
-
             } catch (Exception e) {
-                log.error("❌ SMS 전환 실패 (ID: {})", dto.getInvoiceId(), e);
+                log.error("❌ SMS 전환 실패 (ID: {})", dto.getInvoiceId());
             }
         }
-        log.info("✅ [채널 전환] {}건 SMS 대기열 적재 완료", fallbackList.size());
+        batch.execute();
+        log.info("✅ [SMS 전환] {}건 Redis 적재 완료", fallbackList.size());
+    }
+
+    private LocalDateTime adjustForBusinessHours(LocalDateTime targetTime) {
+        int hour = targetTime.getHour();
+        if (hour >= BAN_START_HOUR) {
+            return targetTime.plusDays(1).withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        if (hour < BAN_END_HOUR) {
+            return targetTime.withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        return targetTime;
     }
 }

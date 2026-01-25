@@ -1,20 +1,23 @@
 package com.mycom.myapp.sendapp.delivery.scheduler;
 
-import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.WAITING_STREAM;
+import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.DELAY_ZSET;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.springframework.data.redis.connection.stream.MapRecord;
-import org.springframework.data.redis.connection.stream.StreamRecords;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.redisson.api.RBatch;
+import org.redisson.api.RScoredSortedSetAsync;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
-import com.mycom.myapp.sendapp.delivery.dto.DeliveryRetryDto; // ★ DTO 재사용
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mycom.myapp.sendapp.delivery.dto.DeliveryRetryDto;
 import com.mycom.myapp.sendapp.delivery.repository.DeliveryStatusRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -26,53 +29,69 @@ import lombok.extern.slf4j.Slf4j;
 public class DeliveryScheduledWorker {
 
     private final DeliveryStatusRepository statusRepository;
-    private final StringRedisTemplate stringRedisTemplate;
+    private final RedissonClient redissonClient;
+    private final ObjectMapper objectMapper;
 
-    // 1분마다 실행 (예약 시간 도래 체크)
+    private static final int BAN_START_HOUR = 21; 
+    private static final int BAN_END_HOUR = 9;  
+
+    // ⏰ 1분마다 실행
     @Scheduled(cron = "0 * * * * *")
+    @Transactional
     public void processScheduled() {
         LocalDateTime now = LocalDateTime.now();
-
-        // 1. 시간이 된 예약 건 조회
         List<DeliveryRetryDto> targets = statusRepository.findScheduledTargets(now);
-
         if (targets.isEmpty()) return;
 
-        log.info("⏰ 예약 발송 대상 {}건 발견. Redis 이관 시작...", targets.size());
-
-        try {
-            // 2. Redis Pipeline 적재
-            stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
-                for (DeliveryRetryDto target : targets) {
-                    
-                    // Loader와 동일한 Map 구조 생성
-                    Map<String, String> streamMap = new HashMap<>();
-                    streamMap.put("invoice_id", String.valueOf(target.getInvoiceId()));
-                    streamMap.put("delivery_channel", "EMAIL");
-                    streamMap.put("retry_count", "0");
-                    streamMap.put("email", target.getEmail());
-                    streamMap.put("phone", target.getPhone());
-                    streamMap.put("recipient_name", target.getRecipientName());
-                    streamMap.put("billing_yyyymm", target.getBillingYyyymm());
-                    streamMap.put("total_amount", String.valueOf(target.getTotalAmount()));
-                    streamMap.put("requested_at", now.toString());
-
-                    MapRecord<String, String, String> record = StreamRecords.newRecord()
-                            .in(WAITING_STREAM).ofMap(streamMap);
-                    
-                    stringRedisTemplate.opsForStream().add(record);
-                }
-                return null;
-            });
-
-            // 3. DB 상태 변경 (SCHEDULED -> READY)
+        // ★ 안전장치: 혹시라도 지금이 금지 시간대라면 다시 미뤄야 함
+        LocalDateTime adjustedTime = adjustForBusinessHours(now);
+        if (adjustedTime.isAfter(now)) {
             List<Long> ids = targets.stream().map(DeliveryRetryDto::getInvoiceId).toList();
-            statusRepository.updateStatusToReadyBatch(ids);
-
-            log.info("✅ 예약 발송 {}건 처리 완료 (SCHEDULED -> READY)", targets.size());
-
-        } catch (Exception e) {
-            log.error("❌ 예약 발송 Redis 이관 중 실패", e);
+            statusRepository.postponeDelivery(ids, adjustedTime);
+            log.warn("⏰ [예약 보호] 야간({})이라 {}건을 다시 내일 아침으로 연기", now, ids.size());
+            return;
         }
+
+        RBatch batch = redissonClient.createBatch();
+        RScoredSortedSetAsync<String> batchZset = batch.getScoredSortedSet(DELAY_ZSET, StringCodec.INSTANCE);
+        long delayUntil = System.currentTimeMillis() + 1000;
+        
+        List<Long> processedIds = new ArrayList<>();
+
+        for (DeliveryRetryDto target : targets) {
+            try {
+                Map<String, String> payload = new HashMap<>();
+                payload.put("invoice_id", String.valueOf(target.getInvoiceId()));
+                payload.put("delivery_channel", "EMAIL");
+                payload.put("retry_count", "0");
+                payload.put("email", target.getEmail());
+                payload.put("phone", target.getPhone());
+                payload.put("recipient_name", target.getRecipientName());
+                payload.put("total_amount", String.valueOf(target.getTotalAmount()));
+                payload.put("requested_at", now.toString());
+
+                batchZset.addAsync(delayUntil, objectMapper.writeValueAsString(payload));
+                processedIds.add(target.getInvoiceId());
+            } catch (Exception e) {
+                log.error("❌ 예약 건 처리 실패 (ID: {})", target.getInvoiceId());
+            }
+        }
+
+        if (!processedIds.isEmpty()) {
+            batch.execute();
+            statusRepository.updateStatusToReadyBatch(processedIds);
+            log.info("✅ 예약 발송 {}건 Redis 이관 완료", processedIds.size());
+        }
+    }
+
+    private LocalDateTime adjustForBusinessHours(LocalDateTime targetTime) {
+        int hour = targetTime.getHour();
+        if (hour >= BAN_START_HOUR) {
+            return targetTime.plusDays(1).withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        if (hour < BAN_END_HOUR) {
+            return targetTime.withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        return targetTime;
     }
 }
