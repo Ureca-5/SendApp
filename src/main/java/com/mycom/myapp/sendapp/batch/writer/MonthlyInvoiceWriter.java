@@ -250,6 +250,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
                         .createdAt(now)
                         .invoiceCategoryId(s.getSubscribeCategoryId())
                         .billingHistoryId(s.getSubscribeBillingHistoryId())
+                        .invoiceId(header.getInvoiceId())
                         .build());
             }
         }
@@ -316,6 +317,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
                             .errorMessage("temporary") // 임시 통일
                             .createdAt(now)
                             .invoiceCategoryId(microCategoryId)
+                            .invoiceId(header.getInvoiceId())
                             .billingHistoryId(r.getMicroPaymentBillingHistoryId())
                             .build());
                 }

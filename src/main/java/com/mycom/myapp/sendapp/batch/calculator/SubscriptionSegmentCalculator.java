@@ -140,7 +140,7 @@ public class SubscriptionSegmentCalculator {
                 } catch (Exception e) {
                     MonthlyInvoiceRowDto h = headerByUserId.get(usersId);
                     if (h != null) h.setSettlementSuccess(false);
-                    failRows.add(toFailDto(cur, attemptId, "temporary"));
+                    failRows.add(toFailDto(cur, attemptId, headerByUserId, "temporary"));
                 }
             } else {
                 // 요금제 서비스 정산 로직
@@ -148,7 +148,7 @@ public class SubscriptionSegmentCalculator {
                     if(isPlanSettlementSuccess == false) {
                         // 해당 유저의 특정 기기의 요금제 원천 데이터 정산 도중 한 번이라도 실패한 경우, 해당 기기의 모든 당월 요금제 정산을 실패 처리
                         // 재배치 시 세그먼트 확정 로직 단순성을 위함
-                        failRows.add(toFailDto(cur, attemptId, "temporary"));
+                        failRows.add(toFailDto(cur, attemptId, headerByUserId, "temporary"));
                         continue;
                     }
                     LocalDate segEnd = segStart.minusDays(1); // 세그먼트 종료일은 (시작일-1)로 초기화
@@ -213,10 +213,10 @@ public class SubscriptionSegmentCalculator {
                     if (h != null) h.setSettlementSuccess(false);
                     // 이전에 정산에 성공한 요금제 데이터도 모두 실패로 간주: 모두 실패 이력 리스트에 추가
                     for(SubscriptionSegmentDto dto : temp) {
-                        failRows.add(toFailDto(dto, attemptId, "temporary"));
+                        failRows.add(toFailDto(dto, attemptId, headerByUserId, "temporary"));
                     }
                     temp.clear();
-                    failRows.add(toFailDto(cur, attemptId, "temporary"));
+                    failRows.add(toFailDto(cur, attemptId, headerByUserId, "temporary"));
                 }
             }
         }
@@ -232,7 +232,8 @@ public class SubscriptionSegmentCalculator {
      * @param attemptId 배치 시도 식별자
      * @return
      */
-    private MonthlyInvoiceBatchFailRowDto toFailDto(SubscribeBillingHistoryRowDto dto, Long attemptId, String message) {
+    private MonthlyInvoiceBatchFailRowDto toFailDto(SubscribeBillingHistoryRowDto dto, Long attemptId, Map<Long, MonthlyInvoiceRowDto> headerByUserId, String message) {
+        Long invoiceId = headerByUserId.get(dto.getUsersId()).getInvoiceId();
         return MonthlyInvoiceBatchFailRowDto.builder()
                 .attemptId(attemptId)
                 .errorCode("SUB_SEGMENT_CALC_FAIL")
@@ -240,6 +241,7 @@ public class SubscriptionSegmentCalculator {
                 .createdAt(LocalDateTime.now())
                 .invoiceCategoryId(dto.getSubscribeCategoryId())
                 .billingHistoryId(dto.getSubscribeBillingHistoryId())
+                .invoiceId(invoiceId)
                 .build();
     }
 
@@ -249,7 +251,8 @@ public class SubscriptionSegmentCalculator {
      * @param attemptId 배치 시도 식별자
      * @return
      */
-    private MonthlyInvoiceBatchFailRowDto toFailDto(SubscriptionSegmentDto dto, Long attemptId, String message) {
+    private MonthlyInvoiceBatchFailRowDto toFailDto(SubscriptionSegmentDto dto, Long attemptId, Map<Long, MonthlyInvoiceRowDto> headerByUserId, String message) {
+        Long invoiceId = headerByUserId.get(dto.getUsersId()).getInvoiceId();
         return MonthlyInvoiceBatchFailRowDto.builder()
                 .attemptId(attemptId)
                 .errorCode("SUB_SEGMENT_CALC_FAIL")
@@ -257,6 +260,7 @@ public class SubscriptionSegmentCalculator {
                 .createdAt(LocalDateTime.now())
                 .invoiceCategoryId(dto.getSubscribeCategoryId())
                 .billingHistoryId(dto.getSubscribeBillingHistoryId())
+                .invoiceId(invoiceId)
                 .build();
     }
 }
