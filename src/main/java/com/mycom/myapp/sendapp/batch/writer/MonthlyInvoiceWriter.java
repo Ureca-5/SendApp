@@ -13,9 +13,9 @@ import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementFail
 import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementStatusHistoryRepository;
 import com.mycom.myapp.sendapp.batch.repository.settlement.InvoiceSettlementStatusRepository;
 import com.mycom.myapp.sendapp.batch.repository.subscribe.SubscribeBillingHistoryRepository;
+import com.mycom.myapp.sendapp.batch.support.BatchInvoiceProperties;
 import com.mycom.myapp.sendapp.batch.support.CategoryIdRegistry;
 import com.mycom.myapp.sendapp.batch.support.ChunkHeaderBuffer;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
@@ -73,13 +73,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
     private Long attemptId;
 
     private final CategoryIdRegistry categoryIdRegistry;
-
-    // 마이크로 결제 페이징(키셋) page size
-    private static final int MICRO_PAGE_SIZE = 5000;
-
-    // 구독 상세 insert 배치 크기 (JDBC batch insert를 여러 번 쪼개 메모리 압박 감소)
-    private static final int SUB_DETAIL_BATCH_SIZE = 5000;
-
+    private final BatchInvoiceProperties batchInvoiceProperties;
 
     @Override
     public void write(Chunk<? extends MonthlyInvoiceRowDto> chunk) {
@@ -215,7 +209,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
         List<SubscriptionSegmentDto> segments = subscriptionSegmentCalculator.calculate(targetYyyymm, raw, failRows, attemptId, headerByUserId);
 
         // 세그먼트 -> 상세 DTO 변환, SUB_DETAIL_BATCH_SIZE 단위로 끊어서 insert
-        List<MonthlyInvoiceDetailRowDto> buffer = new ArrayList<>(Math.min(segments.size(), SUB_DETAIL_BATCH_SIZE));
+        List<MonthlyInvoiceDetailRowDto> buffer = new ArrayList<>(Math.min(segments.size(), batchInvoiceProperties.getSubDetailBatchSize()));
         for (SubscriptionSegmentDto s : segments) {
             MonthlyInvoiceRowDto header = headerByUserId.get(s.getUsersId());
             if (header == null || header.getInvoiceId() == null) {
@@ -243,7 +237,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
                 // 헤더 합계 누적
                 addToHeaderTotals(header, d.getInvoiceCategoryId(), d.getOriginAmount(), d.getDiscountAmount(), d.getTotalAmount());
 
-                if (buffer.size() >= SUB_DETAIL_BATCH_SIZE) {
+                if (buffer.size() >= batchInvoiceProperties.getSubDetailBatchSize()) {
                     monthlyInvoiceDetailRepository.batchInsert(buffer);
                     buffer.clear(); // JDBC 기반에서도 "대량 리스트 유지"가 메모리를 잡아먹으므로 즉시 해제
                 }
@@ -280,7 +274,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
             // - 인덱스: (users_id, billing_yyyymm, micro_payment_billing_history_id)
             List<MicroPaymentBillingHistoryRowDto> page =
                     microPaymentBillingHistoryRepository.findPageByUsersIdsAndYyyymmKeyset(
-                            targetYyyymm, userIds, lastSeenId, MICRO_PAGE_SIZE
+                            targetYyyymm, userIds, lastSeenId, batchInvoiceProperties.getMicroPageSize()
                     );
 
             if (page == null || page.isEmpty()) {
