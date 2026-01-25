@@ -24,14 +24,13 @@ public class DeliveryUserRepository {
 
         String inSql = String.join(",", Collections.nCopies(userIds.size(), "?"));
 
-        // ★ [수정 1] s.preferred_day 컬럼 추가 조회
         String sql = String.format("""
             SELECT 
                 u.users_id, u.name, u.email, u.phone, u.is_withdrawn,
                 s.preferred_hour,
-                s.preferred_day  -- 여기 추가!
+                s.preferred_day  
             FROM users u
-            LEFT JOIN user_delivery_settings s ON u.users_id = s.user_id 
+            LEFT JOIN users_delivery_settings s ON u.users_id = s.users_id 
             WHERE u.users_id IN (%s)
         """, inSql);
 
@@ -42,7 +41,7 @@ public class DeliveryUserRepository {
         @Override
         public DeliveryUser mapRow(ResultSet rs, int rowNum) throws SQLException {
             DeliveryUser user = new DeliveryUser();
-            user.setUserId(rs.getLong("users_id"));
+            user.setUsersId(rs.getLong("users_id"));
             user.setName(rs.getString("name"));
             user.setEmail(rs.getString("email"));
             user.setPhone(rs.getString("phone"));

@@ -62,7 +62,7 @@ public class DeliveryLoaderService {
         List<DeliveryUser> users = deliveryUserRepository.findAllUsersByIds(userIds); 
 
         Map<Long, DeliveryUser> userMap = users.stream()
-                .collect(Collectors.toMap(DeliveryUser::getUserId, Function.identity()));
+                .collect(Collectors.toMap(DeliveryUser::getUsersId, Function.identity()));
 
 
         // 2. [데이터 분류]
