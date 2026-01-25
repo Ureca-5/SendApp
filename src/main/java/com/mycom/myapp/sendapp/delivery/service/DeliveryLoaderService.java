@@ -1,6 +1,5 @@
 package com.mycom.myapp.sendapp.delivery.service;
 
-import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.WAITING_STREAM;
 import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.DELAY_ZSET;
 
 import java.text.DecimalFormat;
@@ -17,14 +16,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.redisson.api.RBatch;
-
 import org.redisson.api.RScoredSortedSetAsync;
 import org.redisson.api.RedissonClient;
 import org.redisson.client.codec.StringCodec;
-import org.springframework.data.redis.connection.stream.MapRecord;
-import org.springframework.data.redis.connection.stream.StreamRecords;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,17 +43,15 @@ public class DeliveryLoaderService {
 
     private final DeliveryStatusRepository deliveryStatusRepository;
     private final DeliveryUserRepository deliveryUserRepository;
-//    private final StringRedisTemplate stringRedisTemplate;
     
+    // Redisson & Jackson (배치 성능 최적화용)
     private final RedissonClient redissonClient;
     private final ObjectMapper objectMapper;
 
-    /**
-     * ✅ 메인 로직 (하이브리드 적재 구현 - 날짜 예약 포함)
-     * 1. 트랜잭션 제거 (DB Lock 방지)
-     * 2. 예약 발송 여부 판단 (날짜+시간) -> DB에는 SCHEDULED 저장, Redis 적재는 스킵
-     * 3. 즉시 발송 건만 Redis Pipeline 태움
-     */
+    // ⛔ [Code B에서 가져옴] 시스템 발송 금지 시간 설정 (21:00 ~ 09:00)
+    private static final int BAN_START_HOUR = 21; 
+    private static final int BAN_END_HOUR = 9;    
+
     public void loadChunk(List<MonthlyInvoiceRowDto> items) {
         
         // 1. [회원 정보 조회]
@@ -77,7 +69,6 @@ public class DeliveryLoaderService {
         List<DeliveryStatus> statusList = new ArrayList<>();
         List<MonthlyInvoiceRowDto> immediatePushItems = new ArrayList<>(); 
 
-        // 기준 시간 (현재)
         LocalDateTime now = LocalDateTime.now();
         String currentRequestTime = now.toString();
         
@@ -92,43 +83,42 @@ public class DeliveryLoaderService {
             }
 
             // ──────────────────────────────────────────────
-            // ★ [핵심 수정] 날짜 + 시간 예약 판단 로직
+            // ★ [병합됨] 날짜 예약 + 야간 제한 로직
             // ──────────────────────────────────────────────
             boolean isReservation = false;
-            LocalDateTime scheduledTime = null;
-            
-            Integer pDay = user.getPreferredDay();   // 유저가 원하는 날짜 (1~31)
-            Integer pHour = user.getPreferredHour(); // 유저가 원하는 시간 (0~23)
+            LocalDateTime scheduledTime = null; // DB에 저장할 최종 시간
 
-            // 날짜와 시간이 모두 설정된 경우에만 예약 로직 수행
+            // 1) 기본 목표 시간은 '현재(즉시)'
+            LocalDateTime targetTime = now; 
+            
+            Integer pDay = user.getPreferredDay();
+            Integer pHour = user.getPreferredHour();
+
+            // 2) 유저 설정이 있으면 targetTime 변경
             if (pDay != null && pHour != null) {
                 try {
-                    // (1) 이번 달의 마지막 날짜 구하기 (예: 2월은 28일, 1월은 31일)
                     int lastDayOfMonth = YearMonth.of(currentYear, currentMonth).lengthOfMonth();
-                    
-                    // (2) 유저가 설정한 날짜가 마지막 날짜보다 크면 보정 (예: 31일 설정했는데 2월이면 28일로)
                     int targetDay = Math.min(pDay, lastDayOfMonth); 
-                    
-                    // (3) 목표 시간 생성: 금년 금월 [targetDay]일 [pHour]시 0분 0초
-                    LocalDateTime targetTime = LocalDateTime.of(currentYear, currentMonth, targetDay, pHour, 0);
-                    
-                    // (4) 미래인지 확인 (과거면 즉시 발송)
-                    if (targetTime.isAfter(now)) {
-                        isReservation = true;
-                        scheduledTime = targetTime;
-                    }
+                    targetTime = LocalDateTime.of(currentYear, currentMonth, targetDay, pHour, 0);
                 } catch (Exception e) {
-                    log.warn("날짜 계산 오류 (User: {}) - 즉시 발송 처리", user.getUserId());
+                    targetTime = now; 
                 }
             }
-            // (참고: 날짜 없이 시간만 있는 경우는 제외했습니다. 필요시 else if 추가 가능)
+            
+            // 3) ★ [Code B 적용] 금지 시간대(야간) 체크 및 보정
+            targetTime = adjustForBusinessHours(targetTime);
+
+            // 4) 미래인지 확인
+            if (targetTime.isAfter(now)) {
+                isReservation = true;
+                scheduledTime = targetTime; // DB에 박제할 예약 시간
+            }
 
             // 3. [DB 엔티티 생성]
             DeliveryStatus status = DeliveryStatus.builder()
                     .invoiceId(item.getInvoiceId())
-                    // 예약이면 SCHEDULED, 아니면 READY
                     .status(isReservation ? DeliveryStatusType.SCHEDULED : DeliveryStatusType.READY)
-                    .scheduledAt(scheduledTime) // 계산된 예약 시간 저장
+                    .scheduledAt(scheduledTime) 
                     .deliveryChannel(DeliveryChannelType.EMAIL)
                     .retryCount(0)
                     .build();
@@ -141,49 +131,21 @@ public class DeliveryLoaderService {
             }
         }
 
-        // 5. [DB 저장] 별도 트랜잭션
+        // 5. [DB 저장]
         saveDeliveryStatus(statusList);
         
 
-        // 6. [Redis 작업] 즉시 발송 대상만 처리
+        // 6. [Redis 작업 - Code A (Redisson Batch) 사용]
         if (!immediatePushItems.isEmpty()) {
             try {
-            	
-//                stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
-//                
-//                    for (MonthlyInvoiceRowDto item : immediatePushItems) {
-//                        
-//                        DeliveryUser user = userMap.get(item.getUsersId());
-//                        
-//                        Map<String, String> streamMap = new HashMap<>();
-//                        streamMap.put("invoice_id", String.valueOf(item.getInvoiceId()));
-//                        streamMap.put("delivery_channel", "EMAIL");
-//                        streamMap.put("retry_count", "0");
-//                        streamMap.put("email", user.getEmail()); 
-//                        streamMap.put("phone", user.getPhone()); 
-//                        streamMap.put("recipient_name", user.getName());
-//                        streamMap.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
-//                        streamMap.put("total_amount", formatMoney(item.getTotalAmount()));
-//                        streamMap.put("requested_at", currentRequestTime);
-//                        
-//                        MapRecord<String, String, String> record = StreamRecords.newRecord()
-//                                .in(WAITING_STREAM)
-//                                .ofMap(streamMap);
-//
-//                        stringRedisTemplate.opsForStream().add(record);
-//                    }
-//                    return null;
-//                });
-            	
-            	
-            	// 대량 적재하여 네트워크 왕복 최소화
+            	// Redisson Batch 시작 (네트워크 왕복 최소화)
             	RBatch batch = redissonClient.createBatch();
             	RScoredSortedSetAsync<String> batchZset = batch.getScoredSortedSet(DELAY_ZSET, StringCodec.INSTANCE);
             	
-            	long delayUntil = System.currentTimeMillis() + 1000; // 현재 시간 + 1초
+            	// 약간의 지연(1초)을 주어 컨슈머가 DB 커밋 후 읽어가도록 유도
+            	long delayUntil = System.currentTimeMillis() + 1000; 
             	
             	for (MonthlyInvoiceRowDto item : immediatePushItems) {
-                  
                   DeliveryUser user = userMap.get(item.getUsersId());
                   
                   Map<String, String> payload = new HashMap<>();
@@ -196,33 +158,27 @@ public class DeliveryLoaderService {
                   payload.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
                   payload.put("requested_at", currentRequestTime);
                   
-                  // 요금제 합계
+                  // 금액 관련 필드들
                   payload.put("totalPlanAmount", formatMoney(item.getTotalPlanAmount()));
-                  // 부가 서비스 합계
                   payload.put("totalAddonAmount", formatMoney(item.getTotalAddonAmount()));
-                  // 기타 단건 결제 합계
                   payload.put("totalEtcAmount", formatMoney(item.getTotalEtcAmount()));
-                  // 전체 할인 금액
                   payload.put("totalDiscountAmount", formatMoney(item.getTotalDiscountAmount()));
-                  // 최종 청구 금액
                   payload.put("total_amount", formatMoney(item.getTotalAmount()));
-                  // 납부 기한
                   payload.put("dueDate", formatDate(item.getDueDate()));
-                  
                   
                   try {
                       String jsonPayload = objectMapper.writeValueAsString(payload);
-                      // 3. 비동기로 배치에 추가 (Score = 실행 예정 시간)
+                      // 비동기로 배치에 추가
                       batchZset.addAsync(delayUntil, jsonPayload);
                   } catch (JsonProcessingException e) {
                       log.error("JSON 직렬화 실패 - InvoiceId: {}, Error: {}", item.getInvoiceId(), e.getMessage());
                   }
-                  
                 }
             	
+            	// 배치 일괄 실행
             	batch.execute();
             	
-                log.info("✅ Redis Stream 적재 완료 (즉시 발송): {}건 / 예약 대기: {}건", 
+                log.info("✅ Redis Batch 적재 완료 (즉시 발송): {}건 / 예약 대기: {}건", 
                         immediatePushItems.size(), items.size() - immediatePushItems.size());
                 
             } catch (Exception e) {
@@ -233,18 +189,32 @@ public class DeliveryLoaderService {
         }
     }
 
-    // DB 저장 전용 (트랜잭션 분리)
+    /**
+     * 🕒 [Code B에서 가져옴] 금지 시간대면 업무 시간(09:00)으로 미루는 로직
+     */
+    private LocalDateTime adjustForBusinessHours(LocalDateTime targetTime) {
+        int hour = targetTime.getHour();
+
+        // 21시 ~ 09시 사이면 -> 09시로 이동
+        if (hour >= BAN_START_HOUR) {
+            return targetTime.plusDays(1).withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        if (hour < BAN_END_HOUR) {
+            return targetTime.withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        return targetTime;
+    }
+
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void saveDeliveryStatus(List<DeliveryStatus> statusList) {
         try {
             deliveryStatusRepository.saveAllIgnore(statusList);
-            log.info("DB(delivery_status) 저장 완료: {}건", statusList.size());
+            log.info("DB 저장 완료: {}건", statusList.size());
         } catch (Exception e) {
-            log.warn("DB 저장 중 중복 데이터 존재 가능성 있음 (무시하고 진행): {}", e.getMessage());
+            log.warn("DB 중복 무시: {}", e.getMessage());
         }
     }
 
-    // Format Helpers
     private String formatDate(TemporalAccessor date) {
         if (date == null) return "";
         return DateTimeFormatter.ofPattern("yyyy-MM-dd").format(date);
