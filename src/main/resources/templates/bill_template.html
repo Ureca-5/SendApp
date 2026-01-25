@@ -7,33 +7,84 @@
         body { font-family: 'Malgun Gothic', sans-serif; line-height: 1.6; color: #333; }
         .container { width: 600px; margin: 20px auto; border: 1px solid #ddd; padding: 20px; }
         .header { border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
-        .content { margin-bottom: 20px; }
-        .footer { font-size: 12px; color: #777; border-top: 1px solid #eee; padding-top: 10px; }
-        .highlight { color: #007bff; font-weight: bold; }
+        .footer { font-size: 12px; color: #777; border-top: 1px solid #eee; padding-top: 10px; margin-top: 30px; }
+        .rt { text-align:right; }
+        .col_pink { color:#b44093; font-style: normal; }
+        .date_point { font-weight: bold; }
+        .header_text span { margin-left: 6px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h2>📄 전자 청구서 안내</h2>
-        </div>
-        
-        <div class="content">
-            <p>안녕하세요, <span class="highlight" th:text="${resultDto.name}">고객</span>님.</p>
-            <p>귀하의 이번 달 청구 내역을 안내해 드립니다.</p>
-            
-            <ul>
-                <li><strong>청구 번호:</strong> <span th:text="${resultDto.invoiceId}">000000</span></li>
-                <li><strong>발송 채널:</strong> <span th:text="${resultDto.channel}">EMAIL</span></li>
-                <li><strong>이메일:</strong> <span th:text="${resultDto.email}">example@mail.com</span></li>
-                <li><strong>휴대폰:</strong> <span th:text="${resultDto.phone}">010-0000-0000</span></li>
-            </ul>
-        </div>
 
-        <div class="footer">
-            <p>본 메일은 발신 전용입니다. 문의사항은 고객센터를 이용해 주세요.</p>
-            <p>2026 LG Uplus Corp. All rights reserved.</p>
+<div class="container">
+
+    <div class="header">
+        <div class="header_text" style="text-align:right;">
+            <span th:text="${resultDto.billingYyyymm}"></span> 청구서
+            <span>
+                <span th:text="${maskedName}"></span> 고객님
+            </span>
+            <span class="number" th:text="${maskedPhone}"></span>
         </div>
     </div>
+
+    <div class="bill_info">
+        <div class="top_line">
+            <span th:text="${maskedName}"></span> 고객님<br>
+            <strong th:text="${resultDto.totalAmount} + '원'"></strong>
+        </div>
+
+        <div class="period_line" style="margin-top: 10px;">
+            <span class="date_point" th:text="${resultDto.billingYyyymm}"></span> 청구서<br>
+            <span>납부 기한: </span>
+            <span class="date_point" th:text="${resultDto.dueDate}"></span><br>
+            <span>이메일: </span>
+            <span class="date_point" th:text="${maskedEmail}"></span>
+        </div>
+    </div>
+
+    <div class="sum_tbl" style="margin-top: 20px;">
+        <table border="0" cellpadding="0" cellspacing="0" style="width:100%;">
+            <tbody>
+            <tr class="category-row">
+                <th><em class="col_pink">A</em> 통신서비스 이용 요금</th>
+                <td class="rt" th:text="${resultDto.totalPlanAmount} + '원'"></td>
+            </tr>
+            <tr class="category-row">
+                <th><em class="col_pink">B</em> 부가서비스 이용 요금</th>
+                <td class="rt" th:text="${resultDto.totalAddonAmount} + '원'"></td>
+            </tr>
+            <tr class="category-row">
+                <th><em class="col_pink">C</em> 단건/기타 결제 요금</th>
+                <td class="rt" th:text="${resultDto.totalEtcAmount} + '원'"></td>
+            </tr>
+
+            <tr class="category-row">
+                <th>할인 금액</th>
+                <td class="rt" th:text="${resultDto.totalDiscountAmount} + '원'"></td>
+            </tr>
+
+            <tr class="total-row">
+                <th>총 청구 금액 (A+B+C-할인)</th>
+                <td class="rt" th:text="${resultDto.totalAmount} + '원'"></td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <a th:href="${detailLink}"
+           style="display:inline-block; padding:15px 35px; background-color:#b44093; color:#ffffff; text-decoration:none; border-radius:10px; font-weight:bold; font-size:16px;">
+            상세 이용 내역 확인하기
+        </a>
+    </div>
+
+    <div class="footer">
+        <p>본 메일은 발신 전용입니다. 문의사항은 고객센터를 이용해 주세요.</p>
+        <p>2026 LG Uplus Corp. All rights reserved.</p>
+    </div>
+
+</div>
+
 </body>
 </html>
