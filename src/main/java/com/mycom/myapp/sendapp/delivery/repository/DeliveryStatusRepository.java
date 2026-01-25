@@ -56,6 +56,11 @@ public class DeliveryStatusRepository {
         });
     }
 
+    
+    // ==========================================
+    // 4️⃣ [기타] 단순 상태 업데이트
+    // ==========================================
+    public void updateStatus(Long invoiceId, DeliveryStatusType newStatus) {
     // ==========================================
     // ★ [추가] 야간 금지/예약 연기용 (Batch Update)
     // ==========================================
