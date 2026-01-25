@@ -1,5 +1,7 @@
 package com.mycom.myapp.sendapp.delivery.sender;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import org.springframework.stereotype.Component;
 
 import com.mycom.myapp.sendapp.delivery.dto.DeliveryPayload;
@@ -17,6 +19,7 @@ public class SMSSender implements DeliverySender {
 	
 	private final TemplateRenderer templateRenderer;
 	private final ContactProtector protector;
+	private final AtomicInteger saved = new AtomicInteger(0);
 	
 	@Override
     public boolean supports(String channel) {
@@ -31,13 +34,14 @@ public class SMSSender implements DeliverySender {
                 payload.getBillingYyyymm(), 
                 payload.getTotalAmount());
 
-        if (payload.getInvoiceId() % 1000 == 0) {
-        	templateRenderer.saveSMS(
-                    payload.getInvoiceId(), 
-                    protector.maskedName(payload.getRecipientName()), 
-                    smsText
-                );
+        if (saved.get() < 10 && saved.getAndIncrement() < 10) {
+            templateRenderer.saveSMS(
+                payload.getInvoiceId(),
+                protector.maskedName(payload.getRecipientName()),
+                smsText
+            );
         }
+
         
         return SendResponse.success();
     }

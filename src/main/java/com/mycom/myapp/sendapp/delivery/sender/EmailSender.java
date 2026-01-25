@@ -1,6 +1,7 @@
 package com.mycom.myapp.sendapp.delivery.sender;
 
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,7 @@ public class EmailSender implements DeliverySender {
 	
 	private final TemplateRenderer templateRenderer;
 	private final ContactProtector protector;
+	private final AtomicInteger saved = new AtomicInteger(0);
 	
 	@Override
     public boolean supports(String channel) {
@@ -31,15 +33,24 @@ public class EmailSender implements DeliverySender {
 		try {
             // HTML 템플릿 렌더링
 			String htmlContent = templateRenderer.render(payload);
+			
+			try {
+			    htmlContent = templateRenderer.render(payload);
+			} catch (Exception e) {
+			    log.error("템플릿 렌더 실패 - invoiceId={}, err={}", payload.getInvoiceId(), e.toString(), e);
+			    
+			}
 
+//			log.info("렌더 성공 - invoiceId={}, len={}", payload.getInvoiceId(), htmlContent.length());
+			
             // 테스트용 파일 저장 
-			if (payload.getInvoiceId() % 1000 == 0) {
-                templateRenderer.saveToFile(
-                    payload.getInvoiceId(), 
-                    protector.maskedName(payload.getRecipientName()), 
-                    htmlContent
-                );
-            }
+			if (saved.get() < 10 && saved.getAndIncrement() < 10) {
+			    templateRenderer.saveToFile(
+			        payload.getInvoiceId(),
+			        protector.maskedName(payload.getRecipientName()),
+			        htmlContent
+			    );
+			}
 			
             // 1% 실패 확률 
             if (ThreadLocalRandom.current().nextInt(100) == 0) {

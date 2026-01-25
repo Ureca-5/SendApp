@@ -45,7 +45,7 @@ public class DelayedTransferer {
                 try {
                     String jsonPayload = String.valueOf(msg); // 명시적 변환
                     
-                    // 🔍 만약 데이터 자체가 "text"라는 문자열로 들어온다면 skip
+                    // 만약 데이터 자체가 "text"라는 문자열로 들어온다면 skip
                     if ("text".equals(jsonPayload)) continue;
 
                     Map<String, String> dataMap = objectMapper.readValue(jsonPayload, new TypeReference<Map<String, String>>() {});

@@ -56,29 +56,6 @@ public class DeliveryStatusRepository {
         });
     }
 
-    // ==========================================
-    // 2️⃣ [Worker용] 중복 방지 및 상태 선점
-    // ==========================================
-    public boolean updateStatusToProcessing(Long id, String channel) {
-        String sql = "UPDATE delivery_status SET status = 'PROCESSING', last_attempt_at = NOW() " +
-                     "WHERE invoice_id = ? " +
-                     "AND status IN ('READY', 'FAILED') " +
-                     "AND delivery_channel = ?";
-        
-        int affectedRows = jdbcTemplate.update(sql, id, channel);
-        return affectedRows == 1;
-    }
-    
-    // ==========================================
-    // 3️⃣ [Worker용] 발송 결과 업데이트
-    // ==========================================
-    public void updateResult(Long id, DeliveryStatusType status, LocalDateTime lastAttemptAt) {
-        String sql = "UPDATE delivery_status SET status = ?, last_attempt_at = ? " +
-                     "WHERE invoice_id = ?";
-        
-        jdbcTemplate.update(sql, status.name(), Timestamp.valueOf(lastAttemptAt), id);
-    }
-
     
     // ==========================================
     // 4️⃣ [기타] 단순 상태 업데이트

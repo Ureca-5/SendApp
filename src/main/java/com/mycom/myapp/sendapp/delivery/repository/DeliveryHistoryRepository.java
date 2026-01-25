@@ -25,23 +25,6 @@ public class DeliveryHistoryRepository {
     private final JdbcTemplate jdbcTemplate;
     private static final DeliveryHistoryRowMapper ROW_MAPPER = new DeliveryHistoryRowMapper();
 
-    // 발송 이력 저장
-    public void save(DeliveryHistory history) {
-        String sql = "INSERT INTO delivery_history " +
-                     "(invoice_id, attempt_no, delivery_channel, receiver_info, status, error_message, requested_at, sent_at) " +
-                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-        jdbcTemplate.update(sql,
-                history.getInvoiceId(),
-                history.getAttemptNo(),
-                history.getDeliveryChannel().name(),
-                history.getReceiverInfo(),
-                history.getStatus().name(),
-                history.getErrorMessage(),
-                history.getRequestedAt() != null ? Timestamp.valueOf(history.getRequestedAt()) : null,
-                history.getSentAt() != null ? Timestamp.valueOf(history.getSentAt()) : null
-        );
-    }
    
     // bulk insert를 위한 sql
     public void saveHistoryBatch(List<ProcessResult> results, LocalDateTime now) {
