@@ -3,6 +3,7 @@ package com.mycom.myapp.sendapp.batch.config;
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
 import com.mycom.myapp.sendapp.batch.listener.MonthlyInvoiceAttemptListener;
 import com.mycom.myapp.sendapp.batch.processor.InvoiceSettlementProcessor;
+import com.mycom.myapp.sendapp.batch.support.BatchInvoiceProperties;
 import com.mycom.myapp.sendapp.batch.tasklet.MonthlyInvoiceAttemptStartTasklet;
 import com.mycom.myapp.sendapp.batch.writer.MonthlyInvoiceWriter;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 @RequiredArgsConstructor
 public class MonthlyInvoiceBatchJobConfig {
 
-    private static final int CHUNK_SIZE = 1000;
+    private final BatchInvoiceProperties batchInvoiceProperties;
 
     // Spring Batch 핵심 인프라
     private final org.springframework.batch.core.repository.JobRepository jobRepository;
@@ -69,7 +70,7 @@ public class MonthlyInvoiceBatchJobConfig {
     @Bean
     public Step step1SettlementChunk() {
         return new StepBuilder("step1SettlementChunk", jobRepository)
-                .<com.mycom.myapp.sendapp.batch.dto.UserBillingDayDto, MonthlyInvoiceRowDto>chunk(CHUNK_SIZE, transactionManager)
+                .<com.mycom.myapp.sendapp.batch.dto.UserBillingDayDto, MonthlyInvoiceRowDto>chunk(batchInvoiceProperties.getChunkSize(), transactionManager)
                 .reader(settlementTargetUserIdReader)
                 .processor(invoiceSettlementProcessor)
                 .writer(monthlyInvoiceWriter)

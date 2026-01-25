@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class DeliveryUser {
     // DB의 users 테이블 컬럼과 매핑될 필드들
-    private Long userId;        // users_id
+    private Long usersId;        // users_id
     private String name;        // name
     private String email;       // email
     private String phone;       // phone

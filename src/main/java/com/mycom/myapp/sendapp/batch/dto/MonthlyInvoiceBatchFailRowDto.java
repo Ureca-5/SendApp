@@ -17,6 +17,7 @@ public class MonthlyInvoiceBatchFailRowDto {
     private String errorCode;         // NOT NULL
     private String errorMessage;      // nullable(text)
     private LocalDateTime createdAt;  // NOT NULL
+    private Long invoiceId;
     private Integer invoiceCategoryId;// NOT NULL (invoice_category_id)
     private Long billingHistoryId;    // NOT NULL
 }
