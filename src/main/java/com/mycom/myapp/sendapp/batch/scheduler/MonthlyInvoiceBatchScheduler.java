@@ -8,6 +8,7 @@ import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -60,6 +61,7 @@ public class MonthlyInvoiceBatchScheduler {
     /**
      * 테스트 원천 데이터(2025년 10월) 정산 배치 수행 메서드(테스트용)
      */
+    @Async
     public void testMonthlyInvoiceBatch(Integer targetYyyymm) {
         if(targetYyyymm == null || targetYyyymm <= 0) {
             throw new IllegalArgumentException("정산 배치 테스트할 년월 정보를 올바르게 입력해주세요.");
