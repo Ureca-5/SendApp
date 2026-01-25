@@ -1,6 +1,7 @@
 package com.mycom.myapp.sendapp.delivery.service;
 
 import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.WAITING_STREAM;
+import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.DELAY_ZSET;
 
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
@@ -15,6 +16,11 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.redisson.api.RBatch;
+
+import org.redisson.api.RScoredSortedSetAsync;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.StreamRecords;
 import org.springframework.data.redis.core.RedisCallback;
@@ -23,6 +29,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryStatus;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryUser;
@@ -41,7 +49,10 @@ public class DeliveryLoaderService {
 
     private final DeliveryStatusRepository deliveryStatusRepository;
     private final DeliveryUserRepository deliveryUserRepository;
-    private final StringRedisTemplate stringRedisTemplate;
+//    private final StringRedisTemplate stringRedisTemplate;
+    
+    private final RedissonClient redissonClient;
+    private final ObjectMapper objectMapper;
 
     /**
      * ✅ 메인 로직 (하이브리드 적재 구현 - 날짜 예약 포함)
@@ -137,30 +148,80 @@ public class DeliveryLoaderService {
         // 6. [Redis 작업] 즉시 발송 대상만 처리
         if (!immediatePushItems.isEmpty()) {
             try {
-                stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
-                    for (MonthlyInvoiceRowDto item : immediatePushItems) {
-                        
-                        DeliveryUser user = userMap.get(item.getUsersId());
-                        
-                        Map<String, String> streamMap = new HashMap<>();
-                        streamMap.put("invoice_id", String.valueOf(item.getInvoiceId()));
-                        streamMap.put("delivery_channel", "EMAIL");
-                        streamMap.put("retry_count", "0");
-                        streamMap.put("email", user.getEmail()); 
-                        streamMap.put("phone", user.getPhone()); 
-                        streamMap.put("recipient_name", user.getName());
-                        streamMap.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
-                        streamMap.put("total_amount", formatMoney(item.getTotalAmount()));
-                        streamMap.put("requested_at", currentRequestTime);
-                        
-                        MapRecord<String, String, String> record = StreamRecords.newRecord()
-                                .in(WAITING_STREAM)
-                                .ofMap(streamMap);
-
-                        stringRedisTemplate.opsForStream().add(record);
-                    }
-                    return null;
-                });
+            	
+//                stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+//                
+//                    for (MonthlyInvoiceRowDto item : immediatePushItems) {
+//                        
+//                        DeliveryUser user = userMap.get(item.getUsersId());
+//                        
+//                        Map<String, String> streamMap = new HashMap<>();
+//                        streamMap.put("invoice_id", String.valueOf(item.getInvoiceId()));
+//                        streamMap.put("delivery_channel", "EMAIL");
+//                        streamMap.put("retry_count", "0");
+//                        streamMap.put("email", user.getEmail()); 
+//                        streamMap.put("phone", user.getPhone()); 
+//                        streamMap.put("recipient_name", user.getName());
+//                        streamMap.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
+//                        streamMap.put("total_amount", formatMoney(item.getTotalAmount()));
+//                        streamMap.put("requested_at", currentRequestTime);
+//                        
+//                        MapRecord<String, String, String> record = StreamRecords.newRecord()
+//                                .in(WAITING_STREAM)
+//                                .ofMap(streamMap);
+//
+//                        stringRedisTemplate.opsForStream().add(record);
+//                    }
+//                    return null;
+//                });
+            	
+            	
+            	// 대량 적재하여 네트워크 왕복 최소화
+            	RBatch batch = redissonClient.createBatch();
+            	RScoredSortedSetAsync<String> batchZset = batch.getScoredSortedSet(DELAY_ZSET, StringCodec.INSTANCE);
+            	
+            	long delayUntil = System.currentTimeMillis() + 1000; // 현재 시간 + 1초
+            	
+            	for (MonthlyInvoiceRowDto item : immediatePushItems) {
+                  
+                  DeliveryUser user = userMap.get(item.getUsersId());
+                  
+                  Map<String, String> payload = new HashMap<>();
+                  payload.put("invoice_id", String.valueOf(item.getInvoiceId()));
+                  payload.put("delivery_channel", "EMAIL");
+                  payload.put("retry_count", "0");
+                  payload.put("email", user.getEmail()); 
+                  payload.put("phone", user.getPhone()); 
+                  payload.put("recipient_name", user.getName());
+                  payload.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
+                  payload.put("requested_at", currentRequestTime);
+                  
+                  // 요금제 합계
+                  payload.put("totalPlanAmount", formatMoney(item.getTotalPlanAmount()));
+                  // 부가 서비스 합계
+                  payload.put("totalAddonAmount", formatMoney(item.getTotalAddonAmount()));
+                  // 기타 단건 결제 합계
+                  payload.put("totalEtcAmount", formatMoney(item.getTotalEtcAmount()));
+                  // 전체 할인 금액
+                  payload.put("totalDiscountAmount", formatMoney(item.getTotalDiscountAmount()));
+                  // 최종 청구 금액
+                  payload.put("total_amount", formatMoney(item.getTotalAmount()));
+                  // 납부 기한
+                  payload.put("dueDate", formatDate(item.getDueDate()));
+                  
+                  
+                  try {
+                      String jsonPayload = objectMapper.writeValueAsString(payload);
+                      // 3. 비동기로 배치에 추가 (Score = 실행 예정 시간)
+                      batchZset.addAsync(delayUntil, jsonPayload);
+                  } catch (JsonProcessingException e) {
+                      log.error("JSON 직렬화 실패 - InvoiceId: {}, Error: {}", item.getInvoiceId(), e.getMessage());
+                  }
+                  
+                }
+            	
+            	batch.execute();
+            	
                 log.info("✅ Redis Stream 적재 완료 (즉시 발송): {}건 / 예약 대기: {}건", 
                         immediatePushItems.size(), items.size() - immediatePushItems.size());
                 
