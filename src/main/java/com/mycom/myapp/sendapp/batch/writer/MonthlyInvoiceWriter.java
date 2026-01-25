@@ -125,21 +125,8 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
             }
         }
 
-        // invoiceId가 없는 유저가 있으면 이후 FK 세팅이 불가하므로 실패 처리(설계상 거의 발생하면 안 됨)
+        // 정산 실패 원천 데이터 정보 저장하는 리스트
         List<MonthlyInvoiceBatchFailRowDto> failRows = new ArrayList<>();
-        for (MonthlyInvoiceRowDto h : headerByUserId.values()) {
-            if (h.getInvoiceId() == null) {
-                h.setSettlementSuccess(false);
-                failRows.add(MonthlyInvoiceBatchFailRowDto.builder()
-                        .attemptId(attemptId)
-                        .errorCode("HEADER_ID_MAPPING_FAIL")
-                        .errorMessage("invoice_id mapping failed after header insert/select")
-                        .createdAt(now)
-                        .invoiceCategoryId(CATEGORY_ETC_PLAN) // 카테고리 임시값(원천 특정 불가)
-                        .billingHistoryId(-1L)                // 원천 특정 불가
-                        .build());
-            }
-        }
 
         // 3) 구독 원천 데이터 일괄 조회 → 세그먼트 확정 → 상세 생성 → 즉시 batch insert(여러 번)로 메모리 압박 완화
         //    - 실패 원천은 상세에 반영하지 않고 failRows에만 누적
@@ -349,6 +336,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
             }
         }
     }
+
 
     private void addToHeaderTotals(MonthlyInvoiceRowDto header, int categoryId, Long origin, Long discount, Long total) {
         // totalDiscountAmount / totalAmount는 카테고리 상관 없이 누적
