@@ -3,6 +3,8 @@ package com.mycom.myapp.sendapp.batch.writer;
 import com.mycom.myapp.sendapp.batch.calculator.SubscriptionSegmentCalculator;
 import com.mycom.myapp.sendapp.batch.dto.*;
 import com.mycom.myapp.sendapp.batch.enums.SettlementStatus;
+import com.mycom.myapp.sendapp.batch.repository.attempt.ChunkSettlementResultDto;
+import com.mycom.myapp.sendapp.batch.repository.attempt.MonthlyInvoiceBatchAttemptJdbcRepository;
 import com.mycom.myapp.sendapp.batch.repository.invoice.MonthlyInvoiceDetailRepository;
 import com.mycom.myapp.sendapp.batch.repository.invoice.MonthlyInvoiceRepository;
 import com.mycom.myapp.sendapp.batch.repository.micropayment.MicroPaymentBillingHistoryRepository;
@@ -55,6 +57,7 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
     private final InvoiceSettlementStatusRepository settlementStatusRepository;
     private final InvoiceSettlementStatusHistoryRepository settlementStatusHistoryRepository;
     private final ChunkHeaderBuffer chunkHeaderBuffer;
+    private final MonthlyInvoiceBatchAttemptJdbcRepository monthlyInvoiceBatchAttemptJdbcRepository;
 
     @Value("#{jobParameters['targetYyyymm']}")
     private Integer targetYyyymm;
@@ -156,10 +159,17 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
         List<SettlementStatusRowDto> statusRows = new ArrayList<>(headerByUserId.size());
         List<SettlementStatusHistoryRowDto> historyRows = new ArrayList<>(headerByUserId.size());
 
+        long settlementSuccessUsersCount = 0; // 이번 청크의 정산 성공 유저 수
+        long settlementFailureUsersCount = 0; // 이번 청크의 정산 실패 유저 수
         for (MonthlyInvoiceRowDto h : headerByUserId.values()) {
-            SettlementStatus to = Boolean.TRUE.equals(h.getSettlementSuccess())
-                    ? SettlementStatus.COMPLETED
-                    : SettlementStatus.FAILED;
+            SettlementStatus to;
+            if(h.getSettlementSuccess() == true) {
+                settlementSuccessUsersCount++;
+                to = SettlementStatus.COMPLETED;
+            } else {
+                settlementFailureUsersCount++;
+                to = SettlementStatus.FAILED;
+            }
 
             statusRows.add(SettlementStatusRowDto.builder()
                     .invoiceId(h.getInvoiceId())
@@ -185,7 +195,13 @@ public class MonthlyInvoiceWriter implements ItemWriter<MonthlyInvoiceRowDto> {
         //    - 구독/단건 처리에서 header dto의 totals를 누적해둔 값을 반영
         monthlyInvoiceRepository.batchUpdateTotals(new ArrayList<>(headerByUserId.values()));
 
-        // 8) 커밋 이후(ChunkListener)에서 Redis 전달할 수 있도록, 성공 헤더 리스트를 인메모리 버퍼에 저장
+        // 8) 배치 시도 이력 레코드에 정산 성공/실패 건수 정보 갱신
+        ChunkSettlementResultDto dto = new ChunkSettlementResultDto();
+        dto.setSuccessCount(settlementSuccessUsersCount);
+        dto.setFailCount(settlementFailureUsersCount);
+        monthlyInvoiceBatchAttemptJdbcRepository.applyChunkResult(attemptId, dto);
+
+        // 9) 커밋 이후(ChunkListener)에서 Redis 전달할 수 있도록, 성공 헤더 리스트를 인메모리 버퍼에 저장
         var stepCtx = StepSynchronizationManager.getContext();
         if (stepCtx != null) {
             Long stepExecutionId = stepCtx.getStepExecution().getId();

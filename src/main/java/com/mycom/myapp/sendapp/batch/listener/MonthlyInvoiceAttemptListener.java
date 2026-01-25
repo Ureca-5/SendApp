@@ -40,30 +40,12 @@ public class MonthlyInvoiceAttemptListener extends ChunkListenerSupport implemen
     @Override
     public void afterChunk(ChunkContext context) {
         StepExecution stepExecution = context.getStepContext().getStepExecution();
-        Long attemptId = getAttemptId(stepExecution.getJobExecution());
-        if (attemptId == null) {
-            return; // Step0에서 attempt_id를 못 넣었으면 건너뜀
-        }
 
         // Writer가 메모리 버퍼에 넣어둔 성공 헤더 리스트를 꺼내 DeliveryLoaderService로 전달
         var headers = chunkHeaderBuffer.poll(stepExecution.getId());
         if (headers != null && !headers.isEmpty()) {
             deliveryLoaderService.loadChunk(headers);
         }
-
-        // writeCount는 Step 누적 값이므로, 직전 값과의 차이를 이번 청크 성공 건수로 본다.
-        long currentWrite = stepExecution.getWriteCount();
-        long lastWrite = stepExecution.getExecutionContext().getLong(CTX_LAST_WRITE_COUNT, 0L);
-        long chunkSuccess = Math.max(0, currentWrite - lastWrite);
-
-        // 다음 청크를 위해 현재 writeCount를 기억
-        stepExecution.getExecutionContext().putLong(CTX_LAST_WRITE_COUNT, currentWrite);
-
-        ChunkSettlementResultDto dto = new ChunkSettlementResultDto();
-        dto.setSuccessCount(chunkSuccess);
-        dto.setFailCount(0L); // 실패 건수 집계가 필요하면 Writer에서 ExecutionContext에 남긴 값을 읽어와 반영
-
-        attemptRepository.applyChunkResult(attemptId, dto);
 
         // 쿼리 카운트 로깅 후 초기화
         QueryCount qc = QueryCountHolder.get(Thread.currentThread().getName());
