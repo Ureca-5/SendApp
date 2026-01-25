@@ -13,12 +13,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class MonthlyInvoiceTestController {
     private final MonthlyInvoiceBatchScheduler monthlyInvoiceBatchScheduler;
 
-    @PostMapping("/scheduled")
-    public void scheduled() {
-        // 정기 배치 구동 테스트용 api
-        monthlyInvoiceBatchScheduler.scheduleMonthlyInvoiceBatch();
-    }
-
     @PostMapping("/test/{targetYyyymm}")
     public void test(@PathVariable("targetYyyymm") Integer targetYyyymm) {
         // 2025년 10월 데이터 대상으로 테스트 정산 배치 수행 api
