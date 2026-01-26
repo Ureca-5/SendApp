@@ -25,18 +25,18 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 재시도 배치용 attempt 생성 Tasklet.
  * - settlement_status.status=FAILED 대상 전체를 정산 대상으로 삼아 target_count에 기록
+ * - FAILED 대상 invoice의 billing_yyyymm이 하나로만 존재해야 하며, 그 값을 target_yyyymm으로 기록
  * - execution_type=RETRY 로 attempt 생성 후 attempt_id를 JobExecutionContext에 저장
  */
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RetrySettlementAttemptStartTasklet implements Tasklet, StepExecutionListener {
-    public static final int RETRY_TARGET_YYYYMM = 0; // 다월 대상인 재시도 배치는 0으로 기록
-
     private final JdbcTemplate jdbcTemplate;
     private final BatchClock batchClock;
     private final HostIdentifier hostIdentifier;
@@ -57,17 +57,22 @@ public class RetrySettlementAttemptStartTasklet implements Tasklet, StepExecutio
             return RepeatStatus.FINISHED;
         }
 
-        // STARTED RETRY attempt 중복 실행 방지
+        // 1) STARTED RETRY attempt 중복 실행 방지
         assertRetryStartable();
 
+        // 2) FAILED 대상의 billing_yyyymm이 단일 값인지 확인 후 가져오기
+        int targetYyyymm = resolveSingleFailedTargetYyyymm();
+
+        // 3) FAILED 대상 카운트 (target_count에 기록)
         long targetCount = countFailedSettlements();
         LocalDateTime now = batchClock.now();
-        long attemptId = insertRetryAttempt(targetCount, now, hostIdentifier.get());
+        long attemptId = insertRetryAttempt(targetYyyymm, targetCount, now, hostIdentifier.get());
 
+        // 4) 후속 Step에서 사용할 컨텍스트 저장
         jobCtx.putLong(MonthlyInvoiceAttemptStartTasklet.CTX_KEY_ATTEMPT_ID, attemptId);
-        jobCtx.putInt(MonthlyInvoiceAttemptStartTasklet.CTX_KEY_TARGET_YYYYMM, RETRY_TARGET_YYYYMM);
+        jobCtx.putInt(MonthlyInvoiceAttemptStartTasklet.CTX_KEY_TARGET_YYYYMM, targetYyyymm);
 
-        log.info("Retry attempt created. attemptId={}, targetCount={}", attemptId, targetCount);
+        log.info("Retry attempt created. attemptId={}, targetYyyymm={}, targetCount={}", attemptId, targetYyyymm, targetCount);
         return RepeatStatus.FINISHED;
     }
 
@@ -82,6 +87,9 @@ public class RetrySettlementAttemptStartTasklet implements Tasklet, StepExecutio
         return count == null ? 0L : count;
     }
 
+    /**
+     * 이미 진행 중인 RETRY 배치가 있는지 검사
+     */
     private void assertRetryStartable() {
         String sql = """
             SELECT attempt_id
@@ -101,7 +109,29 @@ public class RetrySettlementAttemptStartTasklet implements Tasklet, StepExecutio
         }
     }
 
-    private long insertRetryAttempt(long targetCount, LocalDateTime startedAt, String hostName) {
+    /**
+     * FAILED 대상의 billing_yyyymm이 하나인지 확인하고 반환
+     */
+    private int resolveSingleFailedTargetYyyymm() {
+        // settlement_status 실패 대상 invoice_id를 monthly_invoice와 조인하여 billing_yyyymm 목록 조회
+        String sql = """
+            SELECT DISTINCT mi.billing_yyyymm
+            FROM settlement_status ss
+            JOIN monthly_invoice mi ON ss.invoice_id = mi.invoice_id
+            WHERE ss.status = 'FAILED'
+            """;
+
+        List<Integer> yyyymms = jdbcTemplate.queryForList(sql, Integer.class);
+        if (yyyymms == null || yyyymms.isEmpty()) {
+            throw new IllegalStateException("FAILED 상태 정산 대상이 없습니다.");
+        }
+        if (yyyymms.size() > 1) {
+            throw new IllegalStateException("FAILED 대상의 billing_yyyymm이 여러 개입니다. 단일 월만 재시도 가능합니다. months=" + yyyymms);
+        }
+        return yyyymms.get(0);
+    }
+
+    private long insertRetryAttempt(int targetYyyymm, long targetCount, LocalDateTime startedAt, String hostName) {
         String sql = """
             INSERT INTO monthly_invoice_batch_attempt
                 (target_yyyymm, execution_status, execution_type, started_at, ended_at, duration_ms,
@@ -115,7 +145,7 @@ public class RetrySettlementAttemptStartTasklet implements Tasklet, StepExecutio
 
         int updated = jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            ps.setInt(1, RETRY_TARGET_YYYYMM);
+            ps.setInt(1, targetYyyymm);
             ps.setString(2, MonthlyInvoiceBatchExecutionStatus.STARTED.name());
             ps.setString(3, MonthlyInvoiceBatchExecutionType.RETRY.name());
             ps.setTimestamp(4, Timestamp.valueOf(startedAt));

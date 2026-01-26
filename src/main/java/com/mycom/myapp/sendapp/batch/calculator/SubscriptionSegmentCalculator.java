@@ -180,11 +180,11 @@ public class SubscriptionSegmentCalculator {
                                     10,                                   // 소수점 자리수 (Scale, 넉넉하게 설정)
                                     RoundingMode.HALF_DOWN                  // 반내림 모드 (필수)
                             );
-                    if(cur.getUsersId() % 100 == 0) {
-                        String categoryName = (cur.getSubscribeCategoryId() == 1 ? "요금제" : "기타요금제");
-                        log.info("정산 실패. 회원 식별자: {}, 원천 카테고리: {}, 원천 식별자: {}", cur.getUsersId(), categoryName, cur.getSubscribeBillingHistoryId());
-                        throw new RuntimeException("정산 배치 실패 예외 처리 테스트용 예외 발생");
-                    }
+//                    if(cur.getUsersId() % 100 == 0) {
+//                        String categoryName = (cur.getSubscribeCategoryId() == 1 ? "요금제" : "기타요금제");
+//                        log.info("정산 실패. 회원 식별자: {}, 원천 카테고리: {}, 원천 식별자: {}", cur.getUsersId(), categoryName, cur.getSubscribeBillingHistoryId());
+//                        throw new RuntimeException("정산 배치 실패 예외 처리 테스트용 예외 발생");
+//                    }
                     // 최종 정산 결과에 대해 명시적 반내림 적용
                     Long originAmount = BigDecimal.valueOf(cur.getOriginAmount())
                             .multiply(usageRate).setScale(0, RoundingMode.DOWN).longValue();
