@@ -49,13 +49,13 @@ public class DeliveryProcessor {
 
         try {
         	String rawName = payload.get("recipient_name");
-            String maskedName = protector.maskedName(rawName); 
+            String maskedName = rawName;//protector.maskedName(rawName); 
 
             String email = payload.get("email");
             String phone = payload.get("phone");
             
-            String maskedEmail = protector.maskedEmail(EncryptedString.of(email));
-            String maskedPhone = protector.maskedPhone(EncryptedString.of(phone));
+            String maskedEmail = email; //protector.maskedEmail(EncryptedString.of(email));
+            String maskedPhone = phone; //protector.maskedPhone(EncryptedString.of(phone));
             
             // 템플릿 사용
             String htmlContent = templateRenderer.render(payload, maskedName, maskedEmail, maskedPhone);

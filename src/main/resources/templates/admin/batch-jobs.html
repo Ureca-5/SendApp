@@ -2,19 +2,11 @@
 <html lang="ko" xmlns:th="http://www.thymeleaf.org"
       th:replace="~{admin/layout :: layout(~{::#content})}">
 <body>
-<section id="content" class="content"
-         th:with="pageTitle='BATCH JOBS', activeMenu='batch-jobs'">
+<section id="content" th:with="pageTitle='BATCH JOBS', activeMenu='batch-jobs'">
+
 
   <div class="pagehead">
-    <div>
-      <h2>Batch Jobs</h2>
-      <div class="pagehead__sub">배치 실행 현황(통계/최근 실행/실패)을 확인합니다.</div>
-    </div>
-    <div class="pagehead__right panel__meta">
-      <span class="chip chip--neutral" id="js-current-tab">TAB: <strong th:text="${tab}">attempts</strong></span>
-      <span class="chip chip--neutral">YYYYMM: <strong th:text="${yyyymm != null ? yyyymm : '-'}">-</strong></span>
-      <span class="chip chip--neutral">attemptId: <strong th:text="${attemptId != null ? attemptId : '-'}">-</strong></span>
-    </div>
+   
   </div>
 
   <section class="panel">
