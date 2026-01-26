@@ -278,17 +278,6 @@
         </div>
       </div>
 
-      <!-- (선택) 총 청구금액: payload에 totalAmount가 있다면 사용 -->
-      <div class="section">
-        <div class="summary-box">
-          <div class="summary-item">
-            <div class="item-label">
-              <span class="item-label-main">총 청구 금액</span>
-            </div>
-            <div class="item-value" th:text="${resultDto.totalAmount} + '원'"></div>
-          </div>
-        </div>
-      </div>
 
     </div>
 
@@ -313,6 +302,24 @@
           </div>
         </div>
       </div>
+      <!-- RIGHT COLUMN: 할인/결제 요약 -->
+<div class="section">
+  <div class="section-title">할인 및 결제</div>
+
+  <div class="detail-section">
+    <div class="detail-row">
+      <span class="detail-label">할인 금액</span>
+      <!-- 할인은 보통 -로 보여주는 게 직관적 -->
+      <span class="detail-value" th:text="|-${resultDto.totalDiscountAmount}원|"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-label">총 청구 금액</span>
+      <span class="detail-value main" th:text="|${resultDto.totalAmount}원|"></span>
+    </div>
+  </div>
+</div>
+      
 
       <div class="section">
         <div class="section-title">안내</div>

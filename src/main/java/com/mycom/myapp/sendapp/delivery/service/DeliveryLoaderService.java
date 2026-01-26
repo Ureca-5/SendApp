@@ -132,6 +132,11 @@ public class DeliveryLoaderService {
                   payload.put("total_amount", formatMoney(item.getTotalAmount()));
                   payload.put("dueDate", formatDate(item.getDueDate()));
                   
+                  payload.put("totalPlanAmount", formatMoney(item.getTotalPlanAmount()));
+                  payload.put("totalAddonAmount", formatMoney(item.getTotalAddonAmount()));
+                  payload.put("totalEtcAmount", formatMoney(item.getTotalEtcAmount()));
+                  payload.put("totalDiscountAmount", formatMoney(item.getTotalDiscountAmount()));
+                  
                   currentProcessingYyyymm = item.getBillingYyyymm();
                   
                   try {

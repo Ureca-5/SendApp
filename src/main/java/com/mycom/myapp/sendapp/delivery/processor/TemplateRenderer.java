@@ -68,9 +68,13 @@ public class TemplateRenderer {
         context.setVariable("planServices",  plan.isEmpty() ? null : plan);
         context.setVariable("addonServices", (c2 == null || c2.isEmpty()) ? null : c2);
         context.setVariable("etcServices",   (c4 == null || c4.isEmpty()) ? null : c4);
-
-//        log.info("{}, c1");
         
+//        log.info("[AMOUNT] invoiceId={} totalAddonAmount={} totalEtcAmount={} totalAmount={}",
+//                payload.getInvoiceId(),
+//                payload.getTotalAddonAmount(),
+//                payload.getTotalEtcAmount(),
+//                payload.getTotalAmount());
+
         
         return templateEngine.process("bill_template", context);
     }
