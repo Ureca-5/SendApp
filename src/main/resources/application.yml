@@ -38,3 +38,4 @@ app:
       reader-page-size: ${BATCH_INVOICE_READER_PAGE_SIZE:1000}
       micro-page-size: ${BATCH_INVOICE_MICRO_PAGE_SIZE:5000}
       sub-detail-batch-size: ${BATCH_INVOICE_SUB_DETAIL_BATCH_SIZE:5000}
+      failure-weight: ${BATCH_INVOICE_FAILURE_WEIGHT:-1}

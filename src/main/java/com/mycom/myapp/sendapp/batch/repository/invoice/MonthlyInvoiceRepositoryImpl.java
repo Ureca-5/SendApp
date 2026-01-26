@@ -36,6 +36,31 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
                 }
             };
 
+    private static final RowMapper<MonthlyInvoiceRowDto> HEADER_ROW_MAPPER =
+            new RowMapper<>() {
+                @Override
+                public MonthlyInvoiceRowDto mapRow(ResultSet rs, int rowNum) throws SQLException {
+                    Long invoiceId = rs.getLong("invoice_id");
+                    if (rs.wasNull()) invoiceId = null;
+                    Long usersId = rs.getLong("users_id");
+                    if (rs.wasNull()) usersId = null;
+
+                    return MonthlyInvoiceRowDto.builder()
+                            .invoiceId(invoiceId)
+                            .usersId(usersId)
+                            .billingYyyymm(rs.getInt("billing_yyyymm"))
+                            .totalPlanAmount(rs.getLong("total_plan_amount"))
+                            .totalAddonAmount(rs.getLong("total_addon_amount"))
+                            .totalEtcAmount(rs.getLong("total_etc_amount"))
+                            .totalDiscountAmount(rs.getLong("total_discount_amount"))
+                            .totalAmount(rs.getLong("total_amount"))
+                            .dueDate(rs.getDate("due_date") == null ? null : rs.getDate("due_date").toLocalDate())
+                            .createdAt(rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime())
+                            .expiredAt(rs.getDate("expired_at") == null ? null : rs.getDate("expired_at").toLocalDate())
+                            .build();
+                }
+            };
+
     @Override
     public int[] batchInsert(List<MonthlyInvoiceRowDto> headers) {
         if (headers == null || headers.isEmpty()) {
@@ -185,6 +210,36 @@ public class MonthlyInvoiceRepositoryImpl implements MonthlyInvoiceRepository {
                 return headers.size();
             }
         });
+    }
+
+    @Override
+    public List<MonthlyInvoiceRowDto> findByInvoiceIds(List<Long> invoiceIds) {
+        if (invoiceIds == null || invoiceIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String inClause = String.join(",", invoiceIds.stream().map(u -> "?").toArray(String[]::new));
+
+        String sql = String.format("""
+            SELECT
+                  invoice_id,
+                  users_id,
+                  billing_yyyymm,
+                  total_plan_amount,
+                  total_addon_amount,
+                  total_etc_amount,
+                  total_discount_amount,
+                  total_amount,
+                  due_date,
+                  created_at,
+                  expired_at
+            FROM monthly_invoice
+            WHERE invoice_id IN (%s)
+            """, inClause);
+
+        Object[] args = invoiceIds.toArray();
+
+        return jdbcTemplate.query(sql, HEADER_ROW_MAPPER, args);
     }
 
     private long defaultLong(Long v) {

@@ -26,4 +26,10 @@ public interface MonthlyInvoiceRepository {
      * - invoice_id 기준 batch update
      */
     int[] batchUpdateTotals(List<MonthlyInvoiceRowDto> headers);
+
+    /**
+     * invoice_id 목록으로 월 청구서 헤더를 조회합니다.
+     * - totals, users_id, billing_yyyymm 등을 포함
+     */
+    List<MonthlyInvoiceRowDto> findByInvoiceIds(List<Long> invoiceIds);
 }

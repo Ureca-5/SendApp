@@ -21,4 +21,5 @@ public class MonthlyInvoiceBatchAttemptDto {
     private final Long successCount;
     private final Long failCount;
     private final String hostName;
+    private final Long targetCount;
 }
