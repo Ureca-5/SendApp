@@ -35,7 +35,6 @@ public class DeliveryBatchWorker {
     private final DeliveryPersistService deliveryPersistService;
     private final Executor deliveryExecutor;
     private final DelayedTransferer transferer;
-    private final ObjectMapper objectMapper;
     
     public DeliveryBatchWorker(
             StringRedisTemplate redisTemplate,
@@ -50,7 +49,6 @@ public class DeliveryBatchWorker {
         this.deliveryPersistService = deliveryResultService;
         this.deliveryExecutor = deliveryExecutor;
         this.transferer = transferer;
-        this.objectMapper = objectMapper;
     }
     
     private static final int FETCH_COUNT = 1000;
