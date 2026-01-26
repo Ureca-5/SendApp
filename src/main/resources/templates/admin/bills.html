@@ -10,7 +10,7 @@
 <section id="content" th:with="pageTitle='BILLS', activeMenu='bills'">
 
   <!-- Filters + Tabs -->
-  <div class="panel">
+
     <div class="panel__head">
       <h3 class="panel__title">Bills</h3>
        <div class="pagehead__right panel__meta">
@@ -32,10 +32,9 @@
       </a>
     </div>
 
-    <div class="panel__body">
+
       <form class="filterbar" method="get" th:action="${filterAction}">
         <input type="hidden" name="tab" th:value="${tab}" />
-
         <div class="filterbar__row">
           <div class="field">
             <label class="label">정산 월 (YYYYMM)</label>
@@ -75,8 +74,7 @@
           Failures는 <strong>monthly_invoice_batch_fail</strong> 기반입니다. 원천(billing_history_id)별 에러를 확인합니다.
         </div>
       </form>
-    </div>
-  </div>
+
 
   <!-- =======================
        INVOICES TAB
@@ -103,8 +101,9 @@
                 <th class="col-md">Invoice</th>
                 <th class="col-sm">Month</th>
                 <th class="col-sm">User</th>
-                <th class="col-md">Total</th>
-                <th class="col-md">Discount</th>
+                <th class="col-md ">Total</th>
+                <th class="col-md ">Discount</th>
+
                 <th class="col-md">Due</th>
                 <th class="col-md">Created</th>
               </tr>
@@ -126,8 +125,11 @@
                 </td>
                 <td th:text="${inv.billingYyyymm}">202601</td>
                 <td th:text="${inv.userName}">-</td>
-                <td th:text="${#numbers.formatInteger(inv.totalAmount, 1, 'COMMA')}">0</td>
-                <td th:text="${#numbers.formatInteger(inv.totalDiscountAmount, 1, 'COMMA')}">0</td>
+
+                <!-- ✅ 금액 TD 우측정렬 -->
+                <td class="td-amount" th:text="${#numbers.formatInteger(inv.totalAmount, 1, 'COMMA')}">0</td>
+                <td class="td-amount" th:text="${#numbers.formatInteger(inv.totalDiscountAmount, 1, 'COMMA')}">0</td>
+
                 <td th:text="${inv.dueDate}">-</td>
                 <td th:text="${#temporals.format(inv.createdAt, 'yyyy-MM-dd HH:mm')}">-</td>
               </tr>
@@ -205,9 +207,12 @@
             <tr>
               <th class="col-md">Category</th>
               <th>Service</th>
-              <th class="col-md">Origin</th>
-              <th class="col-md">Discount</th>
-              <th class="col-md">Total</th>
+
+              <!-- ✅ 금액 컬럼 우측정렬 -->
+              <th class="col-md td-amount">Origin</th>
+              <th class="col-md td-amount">Discount</th>
+              <th class="col-md td-amount">Total</th>
+
               <th class="col-lg">Usage</th>
             </tr>
             </thead>
@@ -220,9 +225,12 @@
             <tr th:each="d : ${invoiceDetails}">
               <td th:text="${d.categoryName}">-</td>
               <td class="break-all" th:text="${d.serviceName}">-</td>
-              <td th:text="${d.originAmount}">0</td>
-              <td th:text="${d.discountAmount}">0</td>
-              <td class="amount-strong" th:text="${d.totalAmount}">0</td>
+
+              <!-- ✅ 금액 TD 우측정렬 -->
+              <td class="td-amount" th:text="${d.originAmount}">0</td>
+              <td class="td-amount" th:text="${d.discountAmount}">0</td>
+              <td class="td-amount amount-strong" th:text="${d.totalAmount}">0</td>
+
               <td th:text="${d.usageRange}">-</td>
             </tr>
             </tbody>

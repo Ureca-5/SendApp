@@ -321,11 +321,20 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   color: var(--text-main);
   font-weight: 900;
   padding: 12px 14px;
-  text-align: left;
+  text-align: center;
   font-size: 12px;
   letter-spacing: -0.2px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
+}
+/* 이름등 문자열 왼쪽 정렬 */
+.table td.td-string {
+  text-align: left !important;
+}
+
+/* 금액/숫자 오른쪽 정렬 */
+.table td.td-amount {
+  text-align: right !important;
 }
 
 .table thead th {
@@ -338,6 +347,7 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   border-bottom: 1px solid var(--border);
   color: var(--text-main);
   vertical-align: middle;
+  text-align: center;
   background: #fff;
 }
 
@@ -850,3 +860,5 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 
 /* Optional: input width tuning */
 .input--yyyymm { width: 110px; }
+
+

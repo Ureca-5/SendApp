@@ -17,8 +17,8 @@
         <span class="chip chip--neutral">Fails</span>
       </div>
     </div>
-
-    <div class="panel__body">
+</section>
+   
 
       <div class="tabs">
         <a class="tab"
@@ -32,32 +32,21 @@
           Fails
         </a>
       </div>
+      
 
-      <div class="hint mt-8 mb-14">
-        <strong>참고:</strong>
-        Fail 탭은 <code>monthly_invoice_batch_fail</code> 단독으로 월 필터가 불가능해서
-        <code>attempt JOIN</code>으로 <code>yyyymm</code> 필터링됩니다.
-      </div>
 
-      <div class="split split--auto-fixed">
-
-        <div class="panel mt-0">
-          <div class="panel__head">
-            <h3 class="panel__title">Filters</h3>
-            <div class="panel__meta"><span class="hint">yyyymm / limit / (fails: attemptId)</span></div>
-          </div>
-          <div class="panel__body">
-            <form class="filterbar filterbar--flat mt-0 mb-0" th:action="@{/batch-jobs}" method="get">
+            <form class="filterbar" th:action="@{/batch-jobs}" method="get">
               <div class="filterbar__row">
                 <div class="field">
-                  <label class="label">yyyymm</label>
+                  <label class="label">정산 월 (YYYYMM)
+</label>
                   <input class="input w-140" name="yyyymm" type="text" placeholder="202601"
                          th:value="${yyyymm}" data-numeric="true"/>
                 </div>
 
 
                 <div class="field" th:if="${tab == 'fails'}">
-                  <label class="label">attemptId (opt)</label>
+                  <label class="label">Attempt Id </label>
                   <input class="input w-160" name="attemptId" type="text" placeholder="123"
                          th:value="${attemptId}" />
                 </div>
@@ -67,45 +56,17 @@
                 <div class="field field--actions">
                     <label class="label">&nbsp;</label>
                     <div class="flex-row flex-row--tight">
-                        <button class="btn btn--primary" type="submit">Apply</button>
-                        <a class="btn btn--ghost" th:href="@{/batch-jobs(tab=${tab})}">Reset</a>
+                        <button class="btn btn--primary" type="submit">Search</button>
                     </div>
                 </div>
               </div>
             </form>
-          </div>
-        </div>
-
-        <div class="panel mt-0" th:if="${tab == null or tab == 'attempts'}">
-          <div class="panel__head">
-            <h3 class="panel__title">Status 통계</h3>
-            <div class="panel__meta"><span class="hint">Attempt 기준</span></div>
-          </div>
-          <div class="panel__body">
-            <div class="panel__body">
-  <div th:if="${stats == null or #lists.isEmpty(stats)}" class="hint">데이터 없음</div>
-
-  <div th:each="s : ${stats}"
-       class="statline">
-    <span class="chip mono"
-          th:text="${s.status}"
-          th:classappend="${
-            s.status == 'SUCCESS' or s.status == 'DONE' or s.status == 'COMPLETED'
-            ? ' chip--success' :
-            (s.status == 'FAIL' or s.status == 'FAILED'
-            ? ' chip--danger' : ' chip--neutral')
-          }">SUCCESS</span>
-
-    <span class="mono statline__value"
-          th:text="${s.cnt}">10</span>
-  </div>
-</div>
 
 
-          </div>
-        </div>
-      </div>
 
+      
+
+      <div class="hint mt-8 mb-14">
       <div th:if="${tab == null or tab == 'attempts'}" class="mt-20">
         <section class="panel mt-0">
           <div class="panel__head">
@@ -226,6 +187,6 @@
 
     </div>
   </section>
-</section>
+
 </body>
 </html>
