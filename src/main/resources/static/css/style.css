@@ -3,19 +3,19 @@
    ========================================= */
 :root {
   /* LG U+ Color Palette */
-  --bg: #f4f6f8;           /* 전체 배경 (아주 연한 회색) */
-  --panel: #ffffff;        /* 패널/카드 배경 (흰색) */
-  --panel-secondary: #f8f9fa; /* 보조 배경 */
+  --bg: #f4f6f8;
+  --panel: #ffffff;
+  --panel-secondary: #f8f9fa;
 
-  --text-main: #222222;    /* 메인 텍스트 */
-  --text-muted: #666666;   /* 보조 텍스트 */
+  --text-main: #222222;
+  --text-muted: #666666;
 
-  --border: #e0e0e0;       /* 테두리 색상 */
+  --border: #e0e0e0;
 
   /* Brand Colors */
-  --accent: #e6007e;       /* U+ Magenta */
-  --accent-hover: #c5006b; /* 호버 시 색상 */
-  --accent-soft: rgba(230, 0, 126, 0.08); /* 연한 배경용 */
+  --accent: #e6007e;
+  --accent-hover: #c5006b;
+  --accent-soft: rgba(230, 0, 126, 0.08);
 
   /* Status Colors */
   --success: #2e7d32;
@@ -60,14 +60,14 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   min-height: 100vh;
 }
 
-/* Sidebar: 화면 왼쪽에 고정 (Sticky) */
+/* Sidebar */
 .sidebar {
   background: #ffffff;
   border-right: 1px solid var(--border);
   position: sticky;
   top: 0;
-  height: 100vh; /* 화면 전체 높이 사용 */
-  overflow-y: auto; /* 내용 넘치면 내부 스크롤 */
+  height: 100vh;
+  overflow-y: auto;
   z-index: 100;
 
   display: flex;
@@ -76,30 +76,30 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   gap: 20px;
 }
 
-/* Main Area: Flex로 내용과 푸터 분리 */
+/* Main Area */
 .main {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  min-width: 0; /* Grid overflow 방지 */
+  min-width: 0;
 }
 
-/* Content: 남은 공간 꽉 채우기 (푸터 밀어내기용) */
+/* Content */
 .content {
   flex: 1;
   padding: 30px;
   width: 100%;
-  max-width: 1600px; /* 너무 넓어지는 것 방지 */
+  max-width: 1600px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-width: 0; /* ✅ 테이블 overflow가 body를 밀지 않게 */
+  min-width: 0;
 }
 
-/* Footer: 항상 바닥에 고정 */
+/* Footer */
 .footer {
-  margin-top: auto; /* 핵심: 위쪽 공간을 모두 차지하여 바닥으로 이동 */
+  margin-top: auto;
   background: #ffffff;
   border-top: 1px solid var(--border);
   padding: 15px 30px;
@@ -162,14 +162,13 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .header__title { font-size: 18px; font-weight: bold; margin: 0; }
 .header__user { font-size: 13px; color: var(--text-muted); }
 
-/* Panel (White Box) */
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   overflow: hidden;
-  min-width: 0; /* ✅ grid/flex 안에서 overflow 새는거 방지 */
+  min-width: 0;
 }
 
 .panel__head {
@@ -185,17 +184,15 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   margin: 0;
   font-size: 16px;
   font-weight: bold;
-  border-left: 4px solid var(--accent); /* 포인트 라인 */
+  border-left: 4px solid var(--accent);
   padding-left: 12px;
 }
 
-.panel__body { padding: 25px; min-width: 0; } /* ✅ */
+.panel__body { padding: 25px; min-width: 0; }
 
 /* =========================================
    5. UI Components (Cards, Buttons, Tables)
    ========================================= */
-
-/* Grid & Cards */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -213,7 +210,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .card__label { color: var(--text-muted); font-size: 13px; margin-bottom: 8px; }
 .card__value { font-size: 28px; font-weight: 800; color: var(--accent); }
 
-/* Chips */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -225,7 +221,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   color: var(--text-muted);
 }
 
-/* Inputs & Selects */
 .input, .select {
   height: 38px;
   padding: 0 12px;
@@ -238,7 +233,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 .input:focus, .select:focus { border-color: var(--accent); }
 
-/* Buttons */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -291,18 +285,34 @@ ul, li { list-style: none; padding: 0; margin: 0; }
    ========================================= */
 .table-wrap {
   width: 100%;
-  overflow-x: auto;
+  overflow-x: auto;          /* 기본은 유지(안전장치) */
   border: 1px solid var(--border);
   border-radius: 12px;
   background: #fff;
-  min-width: 0; /* ✅ */
+  min-width: 0;
 }
 
+/* ✅ 핵심: 테이블을 화면폭에 "맞추는" 모드 */
+.table--fit {
+  width: 100%;
+  min-width: 0 !important;   /* 기존 min-width 800px 강제 제거 */
+  table-layout: fixed;       /* 칸이 폭을 넘겨 밀지 못하게 고정 */
+}
+
+/* 기존 .table 유지(다른 페이지 호환) */
 .table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 800px; /* 유지: 컬럼 많을 때 스크롤 유도 */
+  min-width: 800px;          /* ✅ 기본 정책은 유지 */
+}
+
+/* table--fit 를 쓰는 테이블만 스크롤 제거에 가깝게 */
+.table--fit th,
+.table--fit td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* Header */
@@ -311,14 +321,22 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   color: var(--text-main);
   font-weight: 900;
   padding: 12px 14px;
-  text-align: left;
+  text-align: center;
   font-size: 12px;
   letter-spacing: -0.2px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
+/* 이름등 문자열 왼쪽 정렬 */
+.table td.td-string {
+  text-align: left !important;
+}
 
-/* Subtle header tone (accent-soft 라인) */
+/* 금액/숫자 오른쪽 정렬 */
+.table td.td-amount {
+  text-align: right !important;
+}
+
 .table thead th {
   box-shadow: inset 0 -1px 0 var(--border), inset 0 3px 0 var(--accent-soft);
 }
@@ -329,26 +347,15 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   border-bottom: 1px solid var(--border);
   color: var(--text-main);
   vertical-align: middle;
+  text-align: center;
   background: #fff;
 }
 
-/* last row border cleanup */
 .table tbody tr:last-child td { border-bottom: 0; }
-
-/* zebra */
 .table tbody tr:nth-child(even) td { background: var(--panel-secondary); }
+.table tbody tr:hover td { background: #fcfcff; }
+.table tr.is-selected td { background: #fcfcff; }
 
-/* hover (전체 UI 톤 통일) */
-.table tbody tr:hover td { 
-  background: #fcfcff;   /* 이전 사용하던 아주 옅은 톤 */
-}
-
-.table tr.is-selected td {
-  background: #fcfcff;
-}
-
-
-/* Empty cell */
 .td-muted {
   color: var(--text-muted);
   text-align: center;
@@ -356,7 +363,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   background: #fff;
 }
 
-/* Pagination */
 .pager {
   margin-top: 20px;
   display: flex;
@@ -366,7 +372,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   border-top: 1px solid var(--border);
 }
 
-/* Empty State */
 .empty {
   padding: 50px;
   text-align: center;
@@ -380,7 +385,7 @@ ul, li { list-style: none; padding: 0; margin: 0; }
    6. Responsive
    ========================================= */
 @media (max-width: 960px) {
-  .app { grid-template-columns: 1fr; } /* 사이드바 상단 이동 */
+  .app { grid-template-columns: 1fr; }
   .sidebar {
     height: auto;
     position: relative;
@@ -434,36 +439,28 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .chip--danger  { background: var(--danger-bg);  color: var(--danger); }
 .chip--neutral { background: var(--panel-secondary); color: var(--text-muted); }
 
-/* make empty tables consistent */
-.table .td-muted { text-align: center; }
-
-/* Table column width helpers (운영에서 컬럼폭 고정용) */
+/* Table column width helpers */
 .col-xs { width: 80px; }
 .col-sm { width: 120px; }
 .col-md { width: 180px; }
 .col-lg { width: 260px; }
 
 /* =========================================
-   8. Admin Ops Add-ons (Status/Alerts/Modal/Table UX)
+   8. Admin Ops Add-ons
    ========================================= */
-
-/* ---- 8-1) Status / Channel badges (NO inline-style hacks) ---- */
 .chip--status { font-weight: 800; letter-spacing: -0.2px; }
 .chip--channel { font-weight: 800; }
 
-/* Delivery status */
-.chip--started   { background: #e3f2fd; color: #1565c0; } /* blue */
+.chip--started   { background: #e3f2fd; color: #1565c0; }
 .chip--completed { background: var(--success-bg); color: var(--success); }
 .chip--failed    { background: var(--danger-bg);  color: var(--danger); }
-.chip--pending   { background: #fff8e1; color: #f57c00; } /* amber */
-.chip--canceled  { background: #eceff1; color: #455a64; } /* grey */
+.chip--pending   { background: #fff8e1; color: #f57c00; }
+.chip--canceled  { background: #eceff1; color: #455a64; }
 
-/* Channels */
-.chip--email { background: #e8eaf6; color: #283593; } /* indigo */
-.chip--sms   { background: #e0f7fa; color: #006064; } /* cyan */
-.chip--push  { background: #f3e5f5; color: #6a1b9a; } /* purple */
+.chip--email { background: #e8eaf6; color: #283593; }
+.chip--sms   { background: #e0f7fa; color: #006064; }
+.chip--push  { background: #f3e5f5; color: #6a1b9a; }
 
-/* ---- 8-2) Alerts / Callouts (운영 화면 필수) ---- */
 .alert {
   border: 1px solid var(--border);
   border-left: 5px solid #999;
@@ -484,11 +481,9 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 
 .alert__actions { margin-left: auto; display: inline-flex; gap: 8px; }
 
-/* ---- 8-3) Inline help / hint text ---- */
 .hint { color: var(--text-muted); font-size: 12px; }
 .hint strong { color: var(--text-main); }
 
-/* ---- 8-4) Code / log preview ---- */
 .codeblock {
   background: #0b1020;
   color: #e6e6e6;
@@ -506,7 +501,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   border: 1px solid var(--border);
 }
 
-/* ---- 8-5) Modal (재발송/상세보기) ---- */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -544,7 +538,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   gap: 10px;
 }
 
-/* Close button */
 .btn-icon {
   width: 34px; height: 34px;
   display: inline-flex;
@@ -557,7 +550,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 .btn-icon:hover { background: var(--panel-secondary); }
 
-/* ---- 8-6) Table UX improvements (테마에 맞춰 최소만) ---- */
 .table td .actions { display: inline-flex; gap: 8px; align-items: center; }
 .table td .link {
   color: var(--accent);
@@ -565,7 +557,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 .table td .link:hover { color: var(--accent-hover); text-decoration: underline; }
 
-/* sticky header option */
 .table-wrap.is-sticky {
   max-height: 520px;
   overflow: auto;
@@ -576,7 +567,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   z-index: 2;
 }
 
-/* row select checkbox alignment */
 .table .td-check {
   width: 44px;
   text-align: center;
@@ -586,7 +576,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   accent-color: var(--accent);
 }
 
-/* ---- 8-7) Tabs (sending/batch detail 전환용) ---- */
 .tabs {
   display: flex;
   gap: 8px;
@@ -610,7 +599,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 .tab:hover { color: var(--text-main); }
 
-/* ---- 8-8) Small KPI row (mini cards) ---- */
 .kpi {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -628,7 +616,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .kpi__value--danger { color: var(--danger); }
 .kpi__value--success { color: var(--success); }
 
-/* ---- 8-9) Page head helper (제목 + 필터상태) ---- */
 .pagehead {
   display:flex;
   justify-content:space-between;
@@ -643,14 +630,12 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   flex-wrap:wrap;
 }
 
-/* ---- 8-10) Layout helper: split panels (상단/하단 2열) ---- */
-/* ✅ 깨짐 방지 핵심: minmax(0,1fr) */
 .split {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 20px;
 }
-.split > * { min-width: 0; } /* ✅ */
+.split > * { min-width: 0; }
 
 @media (max-width: 1200px) {
   .split { grid-template-columns: 1fr; }
@@ -661,17 +646,14 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 }
 
 /* =========================================
-   9. Admin Template Fixups (HTML inline 제거용)
+   9. Admin Template Fixups
    ========================================= */
-
-/* Sidebar footer */
 .sidebar__footer {
   margin-top: auto;
   font-size: 12px;
   color: #999;
 }
 
-/* Header inner layout */
 .header__row {
   display: flex;
   align-items: center;
@@ -686,14 +668,12 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   flex-wrap: wrap;
 }
 
-/* Disabled nav item */
 .nav__item.is-disabled {
   opacity: .45;
   cursor: not-allowed;
   pointer-events: none;
 }
 
-/* Small buttons */
 .btn--small {
   height: 32px;
   padding: 0 12px;
@@ -701,22 +681,18 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   border-radius: 4px;
 }
 
-/* Pager helpers */
 .pager__left { color: var(--text-muted); font-size: 13px; }
 .pager__right { display: inline-flex; gap: 6px; }
 
-/* Empty state titles/desc */
 .empty__title { font-weight: 800; margin: 0 0 6px 0; }
 .empty__desc { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.6; }
 
-/* Generic spacing helpers */
 .mt-8 { margin-top: 8px !important; }
 .mt-12 { margin-top: 12px !important; }
 .mt-14 { margin-top: 14px !important; }
 .mt-20 { margin-top: 20px !important; }
 .mb-14 { margin-bottom: 14px !important; }
 
-/* Width helpers (inline width 제거용) */
 .w-90  { width: 90px !important; }
 .w-120 { width: 120px !important; }
 .w-140 { width: 140px !important; }
@@ -725,16 +701,13 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .w-220 { width: 220px !important; }
 .w-240 { width: 240px !important; }
 
-/* Clickable cards */
 .card.is-clickable { cursor: pointer; }
 .card.is-clickable:hover { filter: brightness(0.99); }
 
-/* KPI grid: 6 columns */
 .grid--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 @media (max-width: 1400px) { .grid--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px)  { .grid--6 { grid-template-columns: 1fr; } }
 
-/* Sections header row */
 .section-head {
   display:flex;
   align-items:flex-end;
@@ -750,9 +723,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   font-weight: 800;
 }
 
-/* Table selection highlight */
-
-/* Bills list helpers */
 .bills-table td { vertical-align: top; }
 .bill-title { font-weight: 800; color: var(--text-main); }
 .bill-meta { font-size: 12px; color: var(--text-muted); }
@@ -763,7 +733,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .stack--end { align-items:flex-end; }
 .actions-vert { display:flex; flex-direction:column; gap:6px; }
 
-/* Side detail panel */
 .panel--side { border: 1px solid var(--border); }
 .kv {
   display:grid;
@@ -774,27 +743,21 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 .kv__key { color: var(--text-muted); }
 .kv__val--strong { font-weight: 900; }
 
-/* Cards for table blocks */
 .card--table { text-align: left; }
 .card--ops { text-align: left; }
 .row { display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; }
 .row--top { align-items:flex-start; }
 
-/* Preview helpers */
 .preview-wrap { max-width: 980px; margin: 0 auto; }
 .preview-phone { max-width: 520px; margin: 0 auto; }
 
-/* Split layout: narrow right panel */
-/* ✅ 깨짐 방지: 왼쪽은 반드시 minmax(0,1fr) */
 .split--narrow-right { grid-template-columns: minmax(0, 1fr) 420px; }
 @media (max-width: 1100px) { .split--narrow-right { grid-template-columns: 1fr; } }
 
 .user-name { font-weight: 800; color: var(--text-main); }
-
-/* Bills list panel */
 .panel--list { border: 1px solid var(--border); }
 
-/* ===== Dashboard add-ons (v2.1) ===== */
+/* Dashboard add-ons */
 .metric { margin-top: 12px; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
 .metric__row { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid var(--border); }
 .metric__row:last-child { border-bottom: 0; }
@@ -811,8 +774,6 @@ ul, li { list-style: none; padding: 0; margin: 0; }
 /* =========================================
    10. Refactored Layout Utilities
    ========================================= */
-
-/* Flexbox Layout Helpers (인라인 스타일 제거용) */
 .flex-row {
   display: flex;
   gap: 12px;
@@ -820,19 +781,14 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   flex-wrap: wrap;
 }
 
-/* Split Layout Variants */
 .split--auto-fixed {
-  grid-template-columns: minmax(0, 1fr) 420px; /* ✅ 왼쪽 줄어들 수 있게 */
+  grid-template-columns: minmax(0, 1fr) 420px;
 }
 @media (max-width: 1100px) {
   .split--auto-fixed { grid-template-columns: 1fr; }
 }
 
-/* Panel Margins - 일관된 여백 관리 */
-.panel + .panel { margin-top: 20px; } /* 패널이 연속될 때 자동 여백 */
-.mt-0 { margin-top: 0 !important; }
 
-/* Filterbar Label Consistency */
 .filterbar .label {
   display: block;
   font-size: 12px;
@@ -840,3 +796,69 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   color: var(--text-muted);
   margin-bottom: 6px;
 }
+
+/* =========================================
+   99. Compat & Small Utilities
+   ========================================= */
+.btn-sm { height: 32px; padding: 0 12px; font-size: 12px; border-radius: 4px; }
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.2px;
+}
+.muted, .text-muted { color: var(--text-muted); }
+
+.pagehead h2 { margin: 0; }
+
+.card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.card__title {
+  font-size: 15px;
+  font-weight: 800;
+  margin-top: 2px;
+}
+
+.form-inline {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filterbar--flat {
+  border: none !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.flex-row--tight { gap: 8px; }
+
+.statline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.statline:last-child { border-bottom: none; }
+.statline__value { font-size: 16px; font-weight: 700; }
+
+/* =========================================
+   ✅ Responsive column hiding (fit 보강)
+   ========================================= */
+@media (max-width: 1100px) {
+  .col-hide-md { display: none; }
+}
+@media (max-width: 860px) {
+  .col-hide-sm { display: none; }
+}
+
+/* Optional: input width tuning */
+.input--yyyymm { width: 110px; }
+
+

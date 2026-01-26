@@ -9,6 +9,7 @@ import com.mycom.myapp.sendapp.global.crypto.ContactProtector;
 import org.springframework.stereotype.Service;
 
 import java.text.NumberFormat;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 
@@ -86,9 +87,17 @@ public class BillService {
     }
 
     private InvoiceDetailRowViewDTO toDetailView(InvoiceDetailRowRawDTO r) {
-        String usageRange = (r.usageStartDate() != null && r.usageEndDate() != null)
-                ? (r.usageStartDate() + " ~ " + r.usageEndDate())
-                : "-";
+        int cat = r.invoiceCategoryId(); // primitive면 그대로, wrapper면 null 처리
+        String usageText;
+
+        // 메일 정책 그대로: cat==4는 단건(결제표기)
+        if (cat == 4) {
+            usageText = formatMetaC(r.usageStartDate(), r.usageEndDate()); // 아래 helper 추가
+        } else {
+            usageText = (r.usageStartDate() != null && r.usageEndDate() != null)
+                    ? (r.usageStartDate() + " ~ " + r.usageEndDate())
+                    : "-";
+        }
 
         return new InvoiceDetailRowViewDTO(
                 r.detailId(),
@@ -98,9 +107,22 @@ public class BillService {
                 fmtMoney(r.originAmount()),
                 fmtMoney(r.discountAmount()),
                 fmtMoney(r.totalAmount()),
-                usageRange
+                usageText
         );
     }
+
+    // BillService 안에 메일과 동일한 helper만 복사
+    private static String formatMetaC(LocalDate localDate, LocalDate localDate2) {
+        if (localDate != null && localDate2 != null) {
+            LocalDate s = localDate;
+            LocalDate e = localDate2;
+            if (s.equals(e)) return s +"";   // Bills는 yyyy-MM-dd로 충분
+            return s + " ~ " + e;
+        }
+        if (localDate2 == null) return localDate+"";
+        return "-";
+    }
+
 
     // =========================
     // 2) Attempts (monthly_invoice_batch_attempt)
