@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(content)">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title th:text="${pageTitle} ?: 'BatchOps Admin'">BatchOps Admin</title>
+
+  <!-- Spring static -->
+  <link rel="stylesheet" th:href="@{/css/style.css}" />
+  <!-- local preview -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+<div class="app">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      <div class="brand__title">5G's BatchOps</div>
+      <div class="brand__subtitle">Billing & Delivery System</div>
+    </div>
+
+    <nav class="sidebar__nav">
+      <a th:href="@{/}" href="dashboard.html" class="nav__item"
+         th:classappend="${activeMenu} == 'dashboard' ? ' is-active' : ''">DASHBOARD</a>
+
+      <a th:href="@{/users}" href="users.html" class="nav__item"
+         th:classappend="${activeMenu} == 'users' ? ' is-active' : ''">USERS</a>
+
+      <a th:href="@{/bills}" href="bills.html" class="nav__item"
+         th:classappend="${activeMenu} == 'bills' ? ' is-active' : ''">BILLS</a>
+
+      <a th:href="@{/sending}" href="sending.html" class="nav__item"
+         th:classappend="${activeMenu} == 'sending' ? ' is-active' : ''">SENDING</a>
+
+      <a th:href="@{/batch-jobs}" href="batch-jobs.html" class="nav__item"
+         th:classappend="${activeMenu} == 'batch-jobs' ? ' is-active' : ''">BATCH JOBS</a>
+
+      <span class="nav__item is-disabled">PAYMENTS (보류)</span>
+    </nav>
+
+    <div class="sidebar__footer">
+      UI: v2
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="header">
+      <div class="header__row">
+        <h1 class="header__title" th:text="${pageTitle} ?: 'BatchOps Admin'">BatchOps Admin</h1>
+        <div class="header__user">
+          <span th:text="${headerUser} ?: 'admin'">admin</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="content" th:replace="${content}"></div>
+
+    <footer class="footer">
+      <div class="footer__left">
+        &copy; 2026 LG Uplus Corp.
+      </div>
+      <div class="footer__right">
+        BatchOps Admin UI
+      </div>
+    </footer>
+  </main>
+
+</div>
+
+<!-- Spring static -->
+<script defer th:src="@{/js/app.js}"></script>
+<!-- local preview -->
+<script defer src="js/app.js"></script>
+</body>
+</html>

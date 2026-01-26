@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+  <div class="panel">
+
+    <div class="panel__head">
+      <h2 class="panel__title">Dashboard</h2>
+
+      <div class="panel__meta">
+        <span class="chip chip--neutral">
+          yyyymm:
+          <strong th:text="${billing_yyyymm} ?: 'ALL'">ALL</strong>
+        </span>
+
+        <form th:action="@{/dashboard}" method="get" class="form-inline">
+          <input name="billing_yyyymm"
+                 class="input input--yyyymm"
+                 type="text"
+                 maxlength="6"
+                 placeholder="YYYYMM"
+                 th:value="${billing_yyyymm}" />
+          <button class="btn btn--primary btn--small" type="submit">조회</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel__body">
+
+      <!-- Summary -->
+      <div class="split">
+        <!-- Settlement Summary -->
+        <div class="card card--ops">
+          <div class="card__head">
+            <div>
+              <div class="card__label">정산(청구서 생성)</div>
+              <div class="card__title">Monthly Invoice Settlement</div>
+            </div>
+            <a class="btn btn--primary"
+               th:href="@{/batch-jobs(billing_yyyymm=${billing_yyyymm})}">Batch Jobs</a>
+          </div>
+
+          <div class="metric">
+            <div class="metric__row">
+              <div class="metric__label">대상</div>
+              <div class="metric__value" th:text="${billingTargetCount} ?: 0">0</div>
+            </div>
+            <div class="metric__row">
+              <div class="metric__label">완료</div>
+              <div class="metric__value" th:text="${batchOkCount} ?: 0">0</div>
+            </div>
+            <div class="metric__row">
+              <div class="metric__label">실패</div>
+              <div class="metric__value metric__value--danger" th:text="${batchFailCount} ?: 0">0</div>
+            </div>
+          </div>
+
+          <div class="muted mt-8">
+            실패가 0이 아니면
+            <a th:href="@{/bills(billing_yyyymm=${billing_yyyymm}, tab='failures')}" class="link">Bills &gt; Failures</a>
+            에서 원인 확인
+          </div>
+        </div>
+
+        <!-- Delivery Summary -->
+        <div class="card card--ops">
+          <div class="card__head">
+            <div>
+              <div class="card__label">발송(이메일/SMS)</div>
+              <div class="card__title">Invoice Delivery</div>
+            </div>
+            <a class="btn btn--primary"
+               th:href="@{/sending(billing_yyyymm=${billing_yyyymm})}">Sending</a>
+          </div>
+
+          <div class="metric">
+            <div class="metric__row">
+              <div class="metric__label">대상</div>
+              <div class="metric__value" th:text="${sendingTargetCount} ?: 0">0</div>
+            </div>
+            <div class="metric__row">
+              <div class="metric__label">성공</div>
+              <div class="metric__value" th:text="${sendingSentCount} ?: 0">0</div>
+            </div>
+            <div class="metric__row">
+              <div class="metric__label">실패</div>
+              <div class="metric__value metric__value--danger" th:text="${sendingFailedCount} ?: 0">0</div>
+            </div>
+          </div>
+
+          <div class="muted mt-8">
+            재발송 대상은
+            <a th:href="@{/sending(billing_yyyymm=${billing_yyyymm}, tab='status', status='FAILED')}" class="link">
+              Sending &gt; Delivery Status(FAILED)
+            </a>
+            에서 확인
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity -->
+      <div class="mt-20 split">
+
+        <!-- Recent Batch Attempts -->
+        <div>
+          <div class="section-head">
+            <h3 class="section-title">최근 배치 이력</h3>
+            <a class="btn btn--ghost" th:href="@{/batch-jobs(billing_yyyymm=${billing_yyyymm})}">전체 보기</a>
+          </div>
+
+          <div class="table-wrap" th:if="${batchRecentAttempts != null and !#lists.isEmpty(batchRecentAttempts)}">
+            <table class="table table--fit">
+              <thead>
+              <tr>
+                <th class="nowrap col-xs">월</th>
+                <th class="nowrap col-md">상태</th>
+                <th class="nowrap col-md col-hide-sm">시작</th>
+                <th class="nowrap col-sm col-hide-md">소요(ms)</th>
+                <th class="nowrap col-xs ta-right">OK</th>
+                <th class="nowrap col-xs ta-right">FAIL</th>
+                <th class="nowrap col-xs ta-center">↗</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr th:each="a : ${batchRecentAttempts}">
+                <td><span class="chip chip--neutral" th:text="${a.targetYyyymm()}">-</span></td>
+                <td>
+                  <span class="chip chip--status"
+                        th:classappend="${a.executionStatus() == 'COMPLETED' ? ' chip--completed' : (a.executionStatus() == 'FAILED' ? ' chip--failed' : ' chip--started')}"
+                        th:text="${a.executionStatus()}">-</span>
+                  <span class="chip chip--neutral" th:text="${a.executionType()}">-</span>
+                </td>
+                <td class="muted col-hide-sm" th:text="${a.startedAt()}">-</td>
+                <td class="ta-right muted col-hide-md" th:text="${a.durationMs()}">-</td>
+                <td class="ta-right" th:text="${a.successCount()}">-</td>
+                <td class="ta-right" th:text="${a.failCount()}">-</td>
+                <td class="ta-center">
+                  <a class="btn btn--ghost btn--small"
+                     th:href="@{/batch-jobs(billing_yyyymm=${billing_yyyymm}, attempt_id=${a.attemptId()})}">보기</a>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="empty" th:if="${batchRecentAttempts == null or #lists.isEmpty(batchRecentAttempts)}">
+            <div class="empty__title">배치 실행 이력이 없습니다</div>
+            <div class="empty__desc">monthly_invoice_batch_attempt 테이블에 데이터가 쌓이면 최신 내역이 표시됩니다.</div>
+          </div>
+        </div>
+
+        <!-- Recent Delivery History -->
+        <div>
+          <div class="section-head">
+            <h3 class="section-title">최근 발송 이력</h3>
+            <a class="btn btn--ghost" th:href="@{/sending(billing_yyyymm=${billing_yyyymm})}">전체 보기</a>
+          </div>
+
+          <div class="table-wrap" th:if="${recentSendingHistory != null and !#lists.isEmpty(recentSendingHistory)}">
+            <table class="table table--fit">
+              <thead>
+              <tr>
+                <th class="nowrap col-md">Invoice</th>
+                <th class="nowrap col-xs">채널</th>
+                <th class="nowrap col-xs">상태</th>
+                <th class="nowrap col-md col-hide-sm">요청</th>
+                <th class="nowrap col-lg col-hide-md">Error</th>
+                <th class="nowrap col-xs ta-center">↗</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr th:each="h : ${recentSendingHistory}">
+                <td class="mono" th:text="${h.invoiceId()}">-</td>
+                <td>
+                  <span class="chip chip--channel"
+                        th:classappend="${h.channel() == 'EMAIL' ? ' chip--email' : (h.channel() == 'SMS' ? ' chip--sms' : ' chip--push')}"
+                        th:text="${h.channel()}">-</span>
+                </td>
+                <td>
+                  <span class="chip chip--status"
+                        th:classappend="${h.status() == 'SENT' ? ' chip--completed' : ' chip--failed'}"
+                        th:text="${h.status()}">-</span>
+                </td>
+                <td class="muted col-hide-sm" th:text="${h.requestedAtText()}">-</td>
+                <td class="truncate muted col-hide-md" th:text="${h.errorMessage()}">-</td>
+                <td class="ta-center">
+                  <a class="btn btn--ghost btn--small"
+                     th:href="@{/sending(billing_yyyymm=${billing_yyyymm}, invoice_id=${h.invoiceId()})}">보기</a>
+                </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="empty" th:if="${recentSendingHistory == null or #lists.isEmpty(recentSendingHistory)}">
+            <div class="empty__title">최근 발송 이력이 없습니다</div>
+            <div class="empty__desc">delivery_history 테이블에서 최근 요청/전송 이력을 조회합니다.</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -3,6 +3,7 @@ package com.mycom.myapp.sendapp.delivery.entity.enums;
 public enum DeliveryStatusType {
     READY,      // 준비
     PROCESSING, // 처리중
+    SCHEDULED,  // 예약 발송 대상
     SENT,       // 발송 완료 (최종 성공)
     FAILED;     // 발송 실패 (최종 실패)
 

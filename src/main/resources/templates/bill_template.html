@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>전자 청구서</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Malgun Gothic', 'Arial', sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background-color: #f5f5f5;
+    }
+    .page-container {
+      width: 1000px;
+      margin: 30px auto;
+      background-color: white;
+      padding: 40px;
+      border: 1px solid #eee;
+    }
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 30px;
+    }
+    .header-title { font-size: 26px; font-weight: bold; color: #333; }
+    .header-guide { font-size: 12px; color: #999; margin-top: 6px; }
+
+    .meta {
+      font-size: 13px;
+      color: #666;
+      text-align: right;
+      line-height: 1.8;
+    }
+    .meta strong { color: #333; }
+
+    .main-content { display: flex; gap: 40px; }
+    .left-column { flex: 1; }
+    .right-column { flex: 1; }
+
+    .section { margin-bottom: 22px; }
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #333;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .summary-box {
+      background-color: #f5f0e8;
+      border: 2px solid #d4a5a5;
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .summary-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .item-label { font-size: 14px; color: #333; }
+    .item-label-main { font-weight: bold; color: #333; }
+    .item-value { font-size: 16px; font-weight: bold; color: #333; }
+
+    .category-tag {
+      display: inline-block;
+      background-color: #d4a5a5;
+      color: white;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 3px;
+      margin-right: 8px;
+      font-size: 13px;
+    }
+
+    .detail-section {
+      background-color: #f5f5f5;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #eee;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      font-size: 13px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-label { color: #666; }
+    .detail-value { color: #333; font-weight: 600; }
+    .detail-value.main { color: #b44093; font-weight: bold; font-size: 14px; }
+
+    
+	details { margin-top: 12px; }
+	
+	
+	details { margin-top: 10px; }
+
+	/* summary를 버튼이 아니라 텍스트 링크처럼 */
+	summary {
+	  cursor: pointer;
+	  font-size: 13px;
+	  font-weight: 700;
+	  color: #5a3f3f;
+	  display: inline-flex;
+	  align-items: center;
+	  gap: 6px;
+	
+	  /* ✅ 박스 느낌 제거 */
+	  padding: 0;
+	  border: 0;
+	  border-radius: 0;
+	  background: transparent;
+	}
+	
+	/* 기본 마커 숨김 */
+	summary::-webkit-details-marker { display: none; }
+	
+	/* ▷/▼ 아이콘을 우리가 직접 */
+	summary::before {
+	  content: "▷";
+	  font-size: 12px;
+	  line-height: 1;
+	  color: rgba(180,64,147,0.75);
+	}
+	
+	/* 열리면 ▼로 바뀌게 */
+	details[open] > summary::before {
+	  content: "▼";
+	}
+	
+	/* hover 시 밑줄만 살짝 */
+	summary:hover {
+	  text-decoration: underline;
+	  text-underline-offset: 3px;
+	}
+	
+	/* 토글 박스도 “박스 없이”로: 여백만 */
+	.toggle-box {
+	  margin-top: 8px;
+	  padding: 0;              /* ✅ 박스 제거 */
+	  border: 0;
+	  background: transparent;
+	}
+	
+	/* 리스트는 너무 튀지 않게 */
+	.svc-list {
+	  padding-left: 18px;
+	  font-size: 12px;
+	  color: #4a3a3a;
+	  line-height: 1.8;
+	  margin: 0;
+	}
+	
+	.svc-list li { margin: 2px 0; }
+	.svc-list li::marker { color: rgba(180,64,147,0.55); }
+		
+	
+
+
+    .cta-section { text-align: center; margin-top: 30px; }
+    .cta-button {
+      display: inline-block;
+      padding: 12px 30px;
+      background-color: #d4a5a5;
+      color: white;
+      text-decoration: none;
+      border-radius: 4px;
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    .footer {
+      background-color: #f5f5f5;
+      padding: 18px;
+      margin-top: 35px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 12px;
+      color: #666;
+      line-height: 1.6;
+    }
+    .footer p { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+
+<div class="page-container">
+
+  <div class="header-top">
+    <div>
+      <div class="header-title">청구 요금 요약</div>
+      <div class="header-guide">(부가가치세 포함)</div>
+    </div>
+
+    <div class="meta">
+      <div><strong th:text="${maskedName}"></strong> 고객님</div>
+      <div th:text="${maskedPhone}"></div>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+    <!-- LEFT COLUMN -->
+    <div class="left-column">
+
+      <!-- A -->
+      <div class="section">
+        <div class="summary-box">
+          <div class="summary-item">
+            <div class="item-label">
+              <span class="category-tag">A</span>
+              <span class="item-label-main">휴대폰 이용 요금</span>
+            </div>
+            <div class="item-value" th:text="${resultDto.totalPlanAmount} + '원'"></div>
+          </div>
+
+          <!-- A 상세 토글: null이면 아예 미출력 -->
+          <details th:if="${planServices != null}">
+            <summary>상세 내역</summary>
+            <div class="toggle-box">
+		    <ul class="svc-list">
+		      <li th:each="name : ${planServices}" th:text="${name}"></li>
+		    </ul>
+		  </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- B -->
+      <div class="section">
+        <div class="summary-box">
+          <div class="summary-item">
+            <div class="item-label">
+              <span class="category-tag">B</span>
+              <span class="item-label-main">부가서비스 이용 요금</span>
+            </div>
+            <div class="item-value" th:text="${resultDto.totalAddonAmount} + '원'"></div>
+          </div>
+
+          <details th:if="${addonServices != null}">
+            <summary>상세 내역</summary>
+            <div class="toggle-box">
+			    <ul class="svc-list">
+			      <li th:each="name : ${addonServices}" th:text="${name}"></li>
+			    </ul>
+			  </div>
+          </details>
+        </div>
+      </div>
+
+      <!-- C -->
+      <div class="section">
+        <div class="summary-box">
+          <div class="summary-item">
+            <div class="item-label">
+              <span class="category-tag">C</span>
+              <span class="item-label-main">기타 이용 요금</span>
+            </div>
+            <div class="item-value" th:text="${resultDto.totalEtcAmount} + '원'"></div>
+          </div>
+
+          <details th:if="${etcServices != null}">
+            <summary>상세 내역</summary>
+              <div class="toggle-box">
+			    <ul class="svc-list">
+			      <li th:each="name : ${etcServices}" th:text="${name}"></li>
+			    </ul>
+			  </div>            
+          </details>
+        </div>
+      </div>
+
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="right-column">
+
+      <div class="section">
+        <div class="section-title">요금 구성</div>
+
+        <div class="detail-section">
+          <div class="detail-row">
+            <span class="detail-label">A. 휴대폰 이용 요금</span>
+            <span class="detail-value main" th:text="${resultDto.totalPlanAmount} + '원'"></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">B. 부가서비스 이용 요금</span>
+            <span class="detail-value" th:text="${resultDto.totalAddonAmount} + '원'"></span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">C. 기타 이용 요금</span>
+            <span class="detail-value" th:text="${resultDto.totalEtcAmount} + '원'"></span>
+          </div>
+        </div>
+      </div>
+      <!-- RIGHT COLUMN: 할인/결제 요약 -->
+<div class="section">
+  <div class="section-title">할인 및 결제</div>
+
+  <div class="detail-section">
+    <div class="detail-row">
+      <span class="detail-label">할인 금액</span>
+      <!-- 할인은 보통 -로 보여주는 게 직관적 -->
+      <span class="detail-value" th:text="|-${resultDto.totalDiscountAmount}원|"></span>
+    </div>
+
+    <div class="detail-row">
+      <span class="detail-label">총 청구 금액</span>
+      <span class="detail-value main" th:text="|${resultDto.totalAmount}원|"></span>
+    </div>
+  </div>
+</div>
+      
+
+      <div class="section">
+        <div class="section-title">안내</div>
+			<p>본 청구서는 전자청구서입니다. 문의 사항은 고객센터로 연락해주세요.</p>
+		    <p>본 메일은 발신 전용입니다.</p>
+		    <p style="margin-top: 12px; border-top: 1px solid #e0e0e0; padding-top: 12px;">
+		      © 2026 LG Uplus Corp. All rights reserved.
+		    </p>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+</body>
+</html>

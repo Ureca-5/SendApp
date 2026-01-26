@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting" content="yes" />
+  <title>LG U+ 이메일 청구서</title>
+  <style type="text/css">
+    body { margin:0; padding:0; border:0; background-color:#fff; font-family:'Nanum Gothic','Malgun Gothic',Dotum,sans-serif; color:#575757; font-size:14px; line-height:1.5; letter-spacing:-0.05em; }
+    table { width:100%; table-layout:fixed; border-collapse:collapse; }
+    th, td { word-break:break-word; word-wrap:break-word; }
+    img { border:0; outline:none; text-decoration:none; -ms-interpolation-mode:bicubic; }
+    .wrap { width:100%; max-width:700px; margin:0 auto; padding:40px 20px; }
+    .col_pink { color:#b44093 !important; font-weight:bold; }
+    .rt { text-align: right !important; }
+
+    .mail_info { padding-bottom:15px; border-bottom:2px solid #808284; margin-bottom:30px; }
+    .mail_info .logo { display:block; width:100px; }
+    .mail_info .header_text { font-size: 15px; color: #333; font-weight: bold; text-align: right; }
+    .mail_info .header_text span { margin-left: 8px; display: inline-block; }
+    .mail_info .header_text .number { font-weight: normal; color: #666; font-size: 13px; }
+
+    .bill_info {
+      position: relative; overflow:hidden;
+      padding: 40px 30px;
+      background-color:#f6e5de;
+      background-image: url("https://image.uplus.co.kr/img_server/ebill/new/201911/bill/visual.png");
+      background-repeat: no-repeat;
+      background-position: 0 100%;
+      background-size: auto 160px;
+      text-align: right;
+      border-radius: 0;
+      margin-bottom: 0;
+    }
+    .bill_info .top_line { font-size: 20px; color: #222; margin-bottom: 20px; font-weight: bold; line-height: 1.4; }
+    .bill_info .top_line strong { display:block; font-size:40px; color:#b44093; margin-top:5px; }
+    .bill_info .period_line { font-size: 14px; color: #444; line-height: 1.6; margin-bottom: 10px; }
+    .bill_info .period_line .date_point { color: #b44093; font-weight: bold; }
+    .bill_info .date_footer { font-size: 12px; color: #777; margin-top: 20px; }
+
+    .payment_info {
+      padding: 25px 20px;
+      background: #fdf3e3;
+      font-size: 15px;
+      color: #212121;
+      margin-bottom: 40px;
+      text-align: center;
+      border-radius: 0;
+      margin-top: 0;
+    }
+    .payment_info p { margin:0; }
+
+    .main {
+      margin-bottom: 30px;
+      border: 2px solid #b44093;
+      border-radius: 15px;
+      padding: 30px 20px;
+      background-color: #fff;
+    }
+    .main h3 {
+      padding-left:15px; margin-bottom:20px; font-size:22px; color:#212121;
+      border-left: 5px solid #b44093; line-height: 1;
+    }
+    .main h3 span { padding-left:10px; font-size:13px; color:#999; font-weight:400; vertical-align: middle; }
+
+    .sum_tbl { margin-bottom:0; color:#212121; border-top: 0; }
+    .sum_tbl .category-row th, .sum_tbl .category-row td {
+      background:#fdf3e3; padding:12px 15px; font-size:16px; border-bottom:1px solid #e0d0c0; font-weight: bold; color: #222;
+    }
+    .sum_tbl .detail-row th {
+      padding:12px 15px 12px 30px; font-size:14px; line-height:1.4; font-weight:bold; border-bottom:1px solid #eee; text-align: left; background: #fff; color: #333;
+    }
+    .sum_tbl .detail-row td {
+      padding:12px 15px; font-size:14px; line-height:1.4; text-align: right; border-bottom:1px solid #eee; background: #fff; vertical-align: top; color: #333;
+    }
+    .sum_tbl .total-row th, .sum_tbl .total-row td {
+      background:#f6e5de; font-size:20px; font-weight:bold; color:#b44093; padding: 20px 15px; border-top: 2px solid #b44093;
+    }
+    .detail-meta { display: block; font-size: 12px; color: #888; margin-top: 4px; font-weight: normal; }
+    .detail-note { display: inline-block; color: #555; margin-left: 5px; }
+    .discount-text { display: block; color: #d32f2f; font-size: 12px; margin-top: 2px; }
+
+    .footer {
+      position: relative;
+      padding-top:120px;
+      padding-bottom:20px;
+      background: url("https://image.uplus.co.kr/img_server/ebill/new/201911/common/footer-bg.png") no-repeat 50% 0;
+      background-size: cover;
+      font-size:11px; line-height:1.6; color:#777;
+      margin-top: 30px; text-align: center;
+    }
+  </style>
+</head>
+
+<!--
+[필요 모델(권장)]
+- billMonthText              : "2026년 1월"
+- customerNameMasked         : "조*혁"
+- phoneMasked                : "010-49**-60**"
+- totalAmountText            : "95,000원"
+- usageStartText             : "2025년 12월 1일"
+- usageEndText               : "2025년 12월 31일"
+- billCreatedDateText        : "2026년 1월 4일"
+- paymentMethodText          : "신한카드"
+- paymentInfoText            : "377********1892"
+- sumAAmountText             : "71,250원"
+- sumBAmountText             : "13,000원"
+- sumCAmountText             : "10,750원"
+
+- aDetails / bDetails / cDetails : List<Line>
+  Line:
+    - serviceNameText         : "5G 프리미어 레귤러"
+    - metaText                : "12.01~12.31"  (C는 대체안: "12.15 결제" 또는 "12.15~12.15")
+    - lineAmountText          : "95,000원"     (표시용. 보통 origin 또는 total)
+    - discountTextOrNull      : "-23,750원"    (없으면 null/빈문자열)
+-->
+
+<body>
+  <div class="wrap">
+
+    <!-- 헤더 -->
+    <table class="mail_info" role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td style="width:110px; vertical-align:bottom;">
+          <img src="https://image.uplus.co.kr/images/popup/mail/logo_pay.gif" alt="LG U+" class="logo" />
+        </td>
+        <td style="vertical-align:bottom; text-align:right;">
+          <div class="header_text">
+            <span th:text="${billMonthText}">2026년 1월</span> 청구서
+            <span>
+              <span th:text="${customerNameMasked}">조*혁</span> 고객님
+            </span>
+            <span class="number">(
+              <span th:text="${phoneMasked}">010-49**-60**</span>
+            )</span>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- 상단 요약 -->
+    <div class="bill_info">
+      <div class="top_line">
+        <span th:text="${customerNameMasked}">조*혁</span> 고객님<br>
+        <strong th:text="${totalAmountText}">95,000원</strong>
+      </div>
+
+      <div class="period_line">
+        <span th:text="${billMonthText}">2026년 1월</span> 요금은&nbsp;
+        <span class="date_point" th:text="${usageStartText}">2025년 12월 1일</span>부터&nbsp;
+        <span class="date_point" th:text="${usageEndText}">2025년 12월 31일</span>까지<br>
+        사용한 요금입니다.
+      </div>
+
+      <div class="date_footer">
+        ※ 청구서 작성일 :
+        <span th:text="${billCreatedDateText}">2026년 1월 4일</span>
+      </div>
+    </div>
+
+    <!-- 결제 안내 -->
+    <div class="payment_info">
+      <p>
+        <strong>
+          <span th:text="${billMonthText}">2026년 1월</span> 요금
+          <em class="col_pink" th:text="${totalAmountText}">95,000원</em>이
+          <em class="col_pink">
+            <span th:text="${paymentMethodText}">신한카드</span>
+            (<span th:text="${paymentInfoText}">377********1892</span>)
+          </em>에서
+          결제될 예정입니다.
+        </strong>
+      </p>
+    </div>
+
+    <!-- 요약표 -->
+    <div class="main">
+      <h3>청구 요금 요약 <span>(부가가치세 포함)</span></h3>
+
+      <div class="sum_tbl">
+        <table border="0" cellpadding="0" cellspacing="0">
+          <colgroup>
+            <col width="65%">
+            <col width="35%">
+          </colgroup>
+          <tbody>
+
+            <!-- A -->
+            <tr class="category-row">
+              <th><em class="col_pink">A</em> 통신서비스 이용 요금</th>
+              <td class="rt" th:text="${sumAAmountText}">0원</td>
+            </tr>
+
+            <tr class="detail-row" th:each="d : ${aDetails}">
+              <th>
+                <span th:text="${d.serviceNameText}">서비스명</span>
+                <span class="detail-meta" th:text="${d.metaText}">MM.DD~MM.DD</span>
+              </th>
+              <td class="rt">
+                <span th:text="${d.lineAmountText}">0원</span>
+                <span class="discount-text"
+                      th:if="${d.discountTextOrNull != null and #strings.length(d.discountTextOrNull) > 0}">
+                  할인 <span th:text="${d.discountTextOrNull}">-0원</span>
+                </span>
+              </td>
+            </tr>
+
+            <!-- B -->
+            <tr class="category-row">
+              <th><em class="col_pink">B</em> 부가서비스 이용 요금</th>
+              <td class="rt" th:text="${sumBAmountText}">0원</td>
+            </tr>
+
+            <tr class="detail-row" th:each="d : ${bDetails}">
+              <th>
+                <span th:text="${d.serviceNameText}">서비스명</span>
+                <span class="detail-meta" th:text="${d.metaText}">MM.DD~MM.DD</span>
+              </th>
+              <td class="rt">
+                <span th:text="${d.lineAmountText}">0원</span>
+                <span class="discount-text"
+                      th:if="${d.discountTextOrNull != null and #strings.length(d.discountTextOrNull) > 0}">
+                  할인 <span th:text="${d.discountTextOrNull}">-0원</span>
+                </span>
+              </td>
+            </tr>
+
+            <!-- C -->
+            <tr class="category-row">
+              <th><em class="col_pink">C</em> 단건/기타 결제 요금</th>
+              <td class="rt" th:text="${sumCAmountText}">0원</td>
+            </tr>
+
+            <!--
+              C 대체안 규칙:
+              - d.metaText에 "MM.DD 결제" 또는 "MM.DD~MM.DD"를 서버에서 만들어 넣는다.
+              - 원천(billing_history) 조인 없이 템플릿만으로 "콘텐츠 구매" 같은 비고는 생성 불가.
+            -->
+            <tr class="detail-row" th:each="d : ${cDetails}">
+              <th>
+                <span th:text="${d.serviceNameText}">서비스명</span>
+                <span class="detail-meta" th:text="${d.metaText}">MM.DD 결제</span>
+              </th>
+              <td class="rt">
+                <span th:text="${d.lineAmountText}">0원</span>
+                <span class="discount-text"
+                      th:if="${d.discountTextOrNull != null and #strings.length(d.discountTextOrNull) > 0}">
+                  할인 <span th:text="${d.discountTextOrNull}">-0원</span>
+                </span>
+              </td>
+            </tr>
+
+            <!-- TOTAL -->
+            <tr class="total-row">
+              <th>총 청구 금액 (A+B+C)</th>
+              <td class="rt" th:text="${totalAmountText}">0원</td>
+            </tr>
+
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="footer">
+      Copyright © LG Uplus Corp. All Rights Reserved.
+    </div>
+
+  </div>
+</body>
+</html>

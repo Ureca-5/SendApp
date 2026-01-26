@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout :: layout(~{::#content})}">
+<body>
+
+<section id="content">
+  <div class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Payments (보류)</h2>
+    </div>
+    <div class="panel__body">
+      <div class="empty">
+        <div class="empty__title">현재 단계에서는 Payments 기능을 제공하지 않습니다.</div>
+        <div class="empty__desc">
+          ERD에 납부상태(수납/미납/부분납 등)가 반영되기 전까지는 Bills 화면에서 조회만 제공하는 것이 정직합니다.
+        </div>
+        <div class="mt-12">
+          <a class="btn btn--primary" th:href="@{/bills(billing_yyyymm=${billing_yyyymm})}">Bills로 이동</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{admin/layout :: layout(~{::#content})}">
+<body>
+<section id="content" th:with="pageTitle='SENDING', activeMenu='sending'">
+
+  <div class="pagehead">
+    <div>
+    </div>
+    <div class="pagehead__right panel__meta">
+      <span class="chip chip--neutral" id="js-current-tab">TAB: <strong th:text="${tab}">status</strong></span>
+      <span class="chip chip--neutral">YYYYMM: <strong th:text="${billing_yyyymm != null ? billing_yyyymm : '-'}">-</strong></span>
+      <span class="chip chip--neutral">invoice_id: <strong th:text="${invoice_id != null ? invoice_id : '-'}">-</strong></span>
+    </div>
+  </div>
+
+  <!-- Filter Bar -->
+  <form class="filterbar" th:action="@{/sending}" method="get">
+    <div class="filterbar__row">
+      <div class="field">
+        <div class="label">Billing YYYYMM</div>
+        <input class="input w-140" type="text" name="billing_yyyymm" placeholder="202601"
+               th:value="${billing_yyyymm}" />
+      </div>
+
+      <div class="field">
+        <div class="label">Invoice ID</div>
+        <input class="input w-160" type="text" name="invoice_id" placeholder="2026010000"
+               th:value="${invoice_id}" />
+      </div>
+
+      <div class="field">
+        <div class="label">Status</div>
+        <select class="select w-160" name="status">
+          <option value="" th:selected="${status == null or status == ''}">ALL</option>
+          <option value="FAILED" th:selected="${status == 'FAILED'}">FAILED</option>
+          <option value="READY" th:selected="${status == 'READY'}">READY</option>
+          <option value="SENT" th:selected="${status == 'SENT'}">SENT</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <div class="label">Channel</div>
+        <select class="select w-160" name="delivery_channel">
+          <option value="" th:selected="${delivery_channel == null or delivery_channel == ''}">ALL</option>
+          <option value="EMAIL" th:selected="${delivery_channel == 'EMAIL'}">EMAIL</option>
+          <option value="SMS" th:selected="${delivery_channel == 'SMS'}">SMS</option>
+        </select>
+      </div>
+
+      <input type="hidden" name="tab" th:value="${tab}" />
+
+      <button class="btn btn--primary" type="submit">Search</button>
+      <a class="btn btn--ghost" th:href="@{/sending(tab=${tab})}">Reset</a>
+    </div>
+
+    <div class="hint mt-8">
+      <strong>참고:</strong> billing_yyyymm/users 정보가 없어도 Status는 떠야 합니다(LEFT JOIN).
+    </div>
+  </form>
+
+  <!-- Main Panel -->
+  <section class="panel">
+    <div class="panel__head">
+      <h2 class="panel__title">Delivery</h2>
+      <div class="panel__meta">
+        <span class="chip chip--neutral">Status</span>
+        <span class="chip chip--neutral">History</span>
+        <span class="chip chip--neutral">Summary</span>
+      </div>
+    </div>
+
+    <div class="panel__body">
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <a class="tab"
+           th:classappend="${tab == null or tab == 'status'} ? ' is-active' : ''"
+           th:href="@{/sending(tab='status', billing_yyyymm=${billing_yyyymm})}">
+          Delivery Status
+        </a>
+        <a class="tab"
+           th:classappend="${tab == 'history'} ? ' is-active' : ''"
+           th:href="@{/sending(tab='history', billing_yyyymm=${billing_yyyymm}, invoice_id=${invoice_id})}">
+          Delivery History
+        </a>
+        <a class="tab"
+           th:classappend="${tab == 'summary'} ? ' is-active' : ''"
+           th:href="@{/sending(tab='summary', billing_yyyymm=${billing_yyyymm})}">
+          Summary
+        </a>
+      </div>
+
+      <!-- Status Tab -->
+      <div th:if="${tab == null or tab == 'status'}">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+            <tr>
+              <th class="col-md">invoice_id</th>
+              <th class="col-lg">receiver</th>
+              <th class="col-sm">channel</th>
+              <th class="col-sm">status</th>
+              <th class="col-sm ta-right">retry</th>
+              <th class="col-md ta-right">amount</th>
+              <th class="col-md">last_attempt</th>
+              <th class="col-md">actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="s : ${deliveryStatuses}">
+              <td th:text="${s.invoiceId}">2026010000</td>
+              <td>
+                <div class="user-name" th:text="${s.userName}">-</div>
+                <div class="hint" th:text="${s.receiverMasked}">-</div>
+              </td>
+              <td>
+                <span class="chip chip--channel"
+                      th:classappend="${s.deliveryChannel == 'EMAIL'} ? ' chip--email' :
+                                      (${s.deliveryChannel == 'SMS'} ? ' chip--sms' : ' chip--push')"
+                      th:text="${s.deliveryChannel}">
+                  EMAIL
+                </span>
+              </td>
+              <td>
+                <span class="chip chip--status"
+                      th:classappend="${s.status == 'FAILED'} ? ' chip--failed' :
+                                      (${s.status == 'READY'} ? ' chip--pending' : ' chip--completed')"
+                      th:text="${s.status}">
+                  SENT
+                </span>
+              </td>
+              <td class="ta-right" th:text="${s.retryCount + ' / 3'}">0 / 3</td>
+              <td class="ta-right amount-strong" th:text="${s.totalAmount != null ? s.totalAmount : '-'}">-</td>
+              <td th:text="${s.lastAttemptAt != null ? #temporals.format(s.lastAttemptAt, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+              <td>
+                <a class="btn btn--small"
+                   th:href="@{/sending(tab='history', billing_yyyymm=${billing_yyyymm}, invoice_id=${s.invoiceId})}">
+                  과거내역
+                </a>
+              </td>
+            </tr>
+            <tr th:if="${deliveryStatuses == null or #lists.isEmpty(deliveryStatuses)}">
+              <td class="td-muted" colspan="8">No status rows</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- History Tab -->
+      <div th:if="${tab == 'history'}">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+            <tr>
+              <th class="col-sm">attempt_no</th>
+              <th class="col-sm">channel</th>
+              <th class="col-lg">receiver</th>
+              <th class="col-sm">status</th>
+              <th>error_message</th>
+              <th class="col-md">requested_at</th>
+              <th class="col-md">sent_at</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="h : ${deliveryHistories}">
+              <td th:text="${h.attemptNo}">1</td>
+              <td>
+                <span class="chip chip--channel"
+                      th:classappend="${h.deliveryChannel == 'EMAIL'} ? ' chip--email' :
+                                      (${h.deliveryChannel == 'SMS'} ? ' chip--sms' : ' chip--push')"
+                      th:text="${h.deliveryChannel}">
+                  EMAIL
+                </span>
+              </td>
+              <td th:text="${h.receiverMasked}">-</td>
+              <td>
+                <span class="chip chip--status"
+                      th:classappend="${h.status == 'FAILED'} ? ' chip--failed' : ' chip--completed'"
+                      th:text="${h.status}">
+                  SENT
+                </span>
+              </td>
+              <td class="truncate" th:text="${h.errorMessage != null ? h.errorMessage : '-'}">-</td>
+              <td th:text="${h.requestedAt != null ? #temporals.format(h.requestedAt, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+              <td th:text="${h.sentAt != null ? #temporals.format(h.sentAt, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+            </tr>
+            <tr th:if="${deliveryHistories == null or #lists.isEmpty(deliveryHistories)}">
+              <td class="td-muted" colspan="7">No histories (invoice_id required)</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Summary Tab -->
+      <div th:if="${tab == 'summary'}">
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+            <tr>
+              <th class="col-sm">channel</th>
+              <th class="col-sm ta-right">attempts</th>
+              <th class="col-sm ta-right">success</th>
+              <th class="col-sm ta-right">fail</th>
+              <th class="col-sm ta-right">success_rate</th>
+              <th class="col-md">updated_at</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="sum : ${deliverySummaries}">
+              <td>
+                <span class="chip chip--channel"
+                      th:classappend="${sum.deliveryChannel == 'EMAIL'} ? ' chip--email' :
+                                      (${sum.deliveryChannel == 'SMS'} ? ' chip--sms' : ' chip--push')"
+                      th:text="${sum.deliveryChannel}">
+                  EMAIL
+                </span>
+              </td>
+              <td class="ta-right" th:text="${sum.totalAttemptCount}">0</td>
+              <td class="ta-right" th:text="${sum.successCount}">0</td>
+              <td class="ta-right" th:text="${sum.failCount}">0</td>
+              <td class="ta-right" th:text="${sum.successRate != null ? sum.successRate + '%' : '-'}">-</td>
+              <td th:text="${sum.updatedAt != null ? #temporals.format(sum.updatedAt, 'yyyy-MM-dd HH:mm') : '-'}">-</td>
+            </tr>
+            <tr th:if="${deliverySummaries == null or #lists.isEmpty(deliverySummaries)}">
+              <td class="td-muted" colspan="6">No summary</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="hint mt-10">
+          Summary가 비어있다면: <code>delivery_summary</code> 테이블/컬럼명이 위 DAO의 <code>summaries()</code> 쿼리와 일치하는지 확인.
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</section>
+</body>
+</html>

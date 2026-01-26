@@ -9,6 +9,13 @@ spring:
   hikari:
     pool-name: HikariCP
     maximum-pool-size: 10
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: true
+    mode: HTML
+    encoding: UTF-8
+    check-template-location: true
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -18,3 +25,17 @@ spring:
     baseline-on-migrate: false  # DB 스키마가 존재하지 않는다면 V1부터 적용
   profiles:
     active: local # 기본 프로파일: local (로컬 테스트 개발용: local, 배포용: prod)
+  batch:
+    jdbc:
+      initialize-schema: always # Spring Batch가 자동으로 Batch와 관련된 정보를 담는 기본 테이블을 별도로 생성
+    job:
+      enabled: false # 앱 시작 시 배치 자동 실행 해제
+
+app:
+  batch:
+    invoice: # 청크 & 페이지 크기 값을 .env의 값을 주입하여 사용, 해당되는 값이 없는 경우 기본값 주입
+      chunk-size: ${BATCH_INVOICE_CHUNK_SIZE:1000}
+      reader-page-size: ${BATCH_INVOICE_READER_PAGE_SIZE:1000}
+      micro-page-size: ${BATCH_INVOICE_MICRO_PAGE_SIZE:5000}
+      sub-detail-batch-size: ${BATCH_INVOICE_SUB_DETAIL_BATCH_SIZE:5000}
+      failure-weight: ${BATCH_INVOICE_FAILURE_WEIGHT:-1}
