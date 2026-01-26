@@ -51,4 +51,30 @@ public interface MonthlyInvoiceBatchAttemptRepository {
      * attempt 조회(필요 시)
      */
     Optional<MonthlyInvoiceBatchAttemptDto> findById(long attemptId);
+
+    /**
+     * 지정 시각 이전에 STARTED 상태로 남아있는 가장 오래된 attempt를 조회합니다.
+     */
+    Optional<MonthlyInvoiceBatchAttemptDto> findOldestStartedBefore(LocalDateTime cutoff);
+
+    /**
+     * 지정 시각 이후에 STARTED 상태 attempt가 존재하는지 확인합니다.
+     */
+    boolean existsStartedAfter(LocalDateTime cutoff);
+
+    /**
+     * STARTED → INTERRUPTED 로 상태 전환하면서 종료 시각/소요 시간을 기록합니다.
+     */
+    int markInterrupted(long attemptId, LocalDateTime endedAt, long durationMs);
+
+    /**
+     * FORCE 타입의 STARTED attempt를 생성합니다.
+     * - target_count/success_count/fail_count를 호출자가 지정한 값으로 채웁니다.
+     */
+    long insertForceStartedAttempt(int targetYyyymm,
+                                   long targetCount,
+                                   long successCount,
+                                   long failCount,
+                                   String hostName,
+                                   LocalDateTime startedAt);
 }

@@ -22,4 +22,10 @@ public class RetrySettlementBatchController {
         JobExecution execution = batchService.runRetrySettlementBatch();
         return ResponseEntity.ok("retry batch started. executionId=" + execution.getId());
     }
+
+    @PostMapping("/settlement/resume")
+    public ResponseEntity<String> resumeStalledSettlement() {
+        JobExecution execution = batchService.resumeStalledSettlementBatch();
+        return ResponseEntity.ok("resume batch started. executionId=" + execution.getId());
+    }
 }
