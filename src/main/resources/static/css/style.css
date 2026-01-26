@@ -426,7 +426,14 @@ ul, li { list-style: none; padding: 0; margin: 0; }
   border-color: var(--danger);
   color: #fff;
 }
-.btn--danger:hover { filter: brightness(0.95); }
+
+.btn--danger:hover {
+  background: var(--danger);      /* ✅ 회색 덮어쓰기 차단 */
+  border-color: var(--danger);    /* ✅ 같이 고정 */
+  color: #fff;                    /* ✅ 글자색 고정 */
+  filter: brightness(0.92);       /* ✅ 원하면 "살짝"만 변화 */
+}
+
 
 .btn--quiet {
   background: transparent;
