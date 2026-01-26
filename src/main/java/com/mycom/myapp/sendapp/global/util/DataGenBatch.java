@@ -1159,7 +1159,7 @@ public class DataGenBatch {
     // =========================
     // main
     // =========================
-    public static void main(String[] args) throws Exception {
+    public static void genaratorMain(String[] args) throws Exception {
 
         // args 미리 지정(폴더만 바꿔서 바로 돌리기)
         if (args.length == 0) {
