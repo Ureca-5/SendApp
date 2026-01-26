@@ -1,5 +1,7 @@
 package com.mycom.myapp.sendapp.batch.reader;
 
+import com.mycom.myapp.sendapp.batch.support.BatchInvoiceProperties;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.configuration.annotation.StepScope;
 import org.springframework.batch.item.database.JdbcPagingItemReader;
@@ -21,7 +23,9 @@ import com.mycom.myapp.sendapp.batch.dto.UserBillingDayDto;
  */
 @Slf4j
 @Configuration
+@RequiredArgsConstructor
 public class SettlementTargetUserReaderConfig {
+    private final BatchInvoiceProperties batchInvoiceProperties;
 
     /**
      * “monthly_invoice가 아직 없고 + 당월(billing_yyyymm)에 원천 데이터가 존재하는 유저”를
@@ -73,8 +77,8 @@ public class SettlementTargetUserReaderConfig {
         // 페이징 안정성을 위한 정렬 키(필수)
         queryProvider.setSortKeys(Map.of("users_id", org.springframework.batch.item.database.Order.ASCENDING));
 
-        int pageSize = 1000; // chunkSize와 동일하게 두는 편이 이해/운영이 쉽습니다(필수는 아님)
-        int fetchSize = 1000;
+        int pageSize = batchInvoiceProperties.getReaderPageSize(); // chunkSize와 동일
+        int fetchSize = pageSize;
 
         return new JdbcPagingItemReaderBuilder<UserBillingDayDto>()
                 .name("settlementTargetUserIdReader")

@@ -1,10 +1,11 @@
 package com.mycom.myapp.sendapp.delivery.service;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey;
 import com.mycom.myapp.sendapp.delivery.dto.ProcessResult;
 import com.mycom.myapp.sendapp.delivery.processor.DeliveryProcessor;
-import com.mycom.myapp.sendapp.delivery.service.DeliveryPersistService;
-import lombok.RequiredArgsConstructor;
+import com.mycom.myapp.sendapp.delivery.scheduler.DelayedTransferer;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -26,24 +28,27 @@ import java.util.function.Supplier;
 
 @Slf4j
 @Component
-//@RequiredArgsConstructor
 public class DeliveryBatchWorker {
 
     private final StringRedisTemplate redisTemplate;
     private final DeliveryProcessor deliveryProcessor;
     private final DeliveryPersistService deliveryPersistService;
     private final Executor deliveryExecutor;
-
+    private final DelayedTransferer transferer;
+    
     public DeliveryBatchWorker(
             StringRedisTemplate redisTemplate,
             DeliveryProcessor deliveryProcessor,
             DeliveryPersistService deliveryResultService,
-            @Qualifier("applicationTaskExecutor") Executor deliveryExecutor // 이 부분이 핵심
+            @Qualifier("applicationTaskExecutor") Executor deliveryExecutor,
+            DelayedTransferer transferer,
+            ObjectMapper objectMapper
     ) {
         this.redisTemplate = redisTemplate;
         this.deliveryProcessor = deliveryProcessor;
         this.deliveryPersistService = deliveryResultService;
         this.deliveryExecutor = deliveryExecutor;
+        this.transferer = transferer;
     }
     
     private static final int FETCH_COUNT = 1000;
@@ -51,6 +56,15 @@ public class DeliveryBatchWorker {
 
     @Scheduled(fixedDelay = 1000)
     public void run() {
+    	
+    	// 지연 큐(ZSET) -> 스트림 데이터 전이 실행
+    	try {
+            transferer.transfer();
+        } catch (Exception e) {
+            log.error("[Transfer Error] 지연 메시지 인계 중 오류 발생: {}", e.getMessage());
+            // 전이 실패 시에도 일단 스트림에 있는 건 처리하도록 진행
+        }
+    	
         // 1. Redis Stream Read (Type Safety 보완)
         @SuppressWarnings("unchecked")
         List<MapRecord<String, String, String>> records = (List) redisTemplate.opsForStream().read(
@@ -76,15 +90,24 @@ public class DeliveryBatchWorker {
                     @Override
                     public List<ProcessResult> get() {
                         List<ProcessResult> results = new ArrayList<>();
+                        
                         for (MapRecord<String, String, String> record : chunk) {
-                            results.add(deliveryProcessor.execute(record.getValue()));
+                        	Map<String, String> streamValue = record.getValue();
+                      
+                            try {
+                            	
+                                results.add(deliveryProcessor.execute(streamValue));
+                            } catch(Exception e) {
+                            	log.error("[Execution Error] JSON 복구 실패 - RecordId: {}, Error: {}", record.getId(), e.getMessage());
+                            }
+                            
                         }
                         return results;
                     }
                 }, deliveryExecutor).exceptionally(new Function<Throwable, List<ProcessResult>>() {
                     @Override
                     public List<ProcessResult> apply(Throwable t) {
-                        log.error("⚠️ [Chunk Error] 병렬 처리 중 에러: {}", t.getMessage());
+                        log.error("[Chunk Error] 병렬 처리 중 에러: {}", t.getMessage());
                         return new ArrayList<>();
                     }
                 });
@@ -121,7 +144,7 @@ public class DeliveryBatchWorker {
 
         } catch (Exception e) {
             // DB 에러 혹은 기타 장애 발생 시 ACK를 하지 않음으로써 Redis Pending List에 남겨둠 (재처리 보장)
-            log.error("🚨 [Critical Error] 배치 처리 중단 (ACK 미수행): {}", e.getMessage(), e);
+            log.error("[Critical Error] 배치 처리 중단 (ACK 미수행): {}", e.getMessage(), e);
         }
     }
 

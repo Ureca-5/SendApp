@@ -1,12 +1,13 @@
 package com.mycom.myapp.sendapp.delivery.service;
 
-// 1. 상수 클래스 static import (Key 오타 방지)
-import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.WAITING_STREAM;
+import static com.mycom.myapp.sendapp.delivery.config.DeliveryRedisKey.DELAY_ZSET;
 
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -14,14 +15,16 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-// 2. MapRecord 관련 import
-import org.springframework.data.redis.connection.stream.MapRecord;
-import org.springframework.data.redis.connection.stream.StreamRecords;
-import org.springframework.data.redis.core.RedisCallback;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.redisson.api.RBatch;
+import org.redisson.api.RScoredSortedSetAsync;
+import org.redisson.api.RedissonClient;
+import org.redisson.client.codec.StringCodec;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryStatus;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryUser;
@@ -37,118 +40,139 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class DeliveryLoaderService {
-
+	
+	public static int currentProcessingYyyymm = 0;
+	
     private final DeliveryStatusRepository deliveryStatusRepository;
     private final DeliveryUserRepository deliveryUserRepository;
+    private final RedissonClient redissonClient;
+    private final ObjectMapper objectMapper;
     
-    // 3. StringRedisTemplate 사용 (직렬화 이슈 원천 차단)
-    private final StringRedisTemplate stringRedisTemplate;
+    private static final int BAN_START_HOUR = 21; 
+    private static final int BAN_END_HOUR = 9;    
 
-    /**
-     * ✅ 메인 로직
-     * 역할: 회원정보 조인 -> DB(배송상태) 중복 방지 저장 -> Redis(MapRecord) 적재
-     */
-    @Transactional
     public void loadChunk(List<MonthlyInvoiceRowDto> items) {
-        
-        // 1. [회원 정보 조회] - Bulk Select
-        Set<Long> userIds = items.stream()
-                .map(MonthlyInvoiceRowDto::getUsersId)
-                .collect(Collectors.toSet());
-        
+        // 1. 회원 정보 조회
+        Set<Long> userIds = items.stream().map(MonthlyInvoiceRowDto::getUsersId).collect(Collectors.toSet());
         List<DeliveryUser> users = deliveryUserRepository.findAllUsersByIds(userIds); 
+        Map<Long, DeliveryUser> userMap = users.stream().collect(Collectors.toMap(DeliveryUser::getUsersId, Function.identity()));
 
-        Map<Long, DeliveryUser> userMap = users.stream()
-                .collect(Collectors.toMap(DeliveryUser::getUserId, Function.identity()));
+        List<DeliveryStatus> statusList = new ArrayList<>();
+        List<MonthlyInvoiceRowDto> immediatePushItems = new ArrayList<>(); 
 
+        LocalDateTime now = LocalDateTime.now();
+        String currentRequestTime = now.toString();
+        int currentYear = now.getYear();
+        int currentMonth = now.getMonthValue();
 
-        // 2. [DB 작업] delivery_status 테이블 저장
-        List<DeliveryStatus> statusList = items.stream()
-                .map(item -> DeliveryStatus.builder()
-                        .invoiceId(item.getInvoiceId())
-                        .status(DeliveryStatusType.READY)
-                        .deliveryChannel(DeliveryChannelType.EMAIL)
-                        .retryCount(0)
-                        .build())
-                .collect(Collectors.toList());
+        for (MonthlyInvoiceRowDto item : items) {
+            DeliveryUser user = userMap.get(item.getUsersId());
+            if (user == null) continue; 
 
-        // 4. [DB 중복 방지] try-catch로 감싸서 한 건의 중복으로 전체 배치가 죽는 것을 방지
-        String initialTime = LocalDateTime.now().toString(); 
-        String finalRequestedAt = initialTime;
-        try {
-        	
-            deliveryStatusRepository.saveAllIgnore(statusList);
-            finalRequestedAt = LocalDateTime.now().toString();
-            log.info("DB(delivery_status) 저장 완료: {}건", items.size());
-        } catch (Exception e) {
-            // DuplicateKeyException 등을 잡아서 로그만 남기고 진행 (혹은 개별 Insert 로직으로 Fallback)
-            log.warn("DB 저장 중 중복 데이터 존재 가능성 있음 (무시하고 진행): {}", e.getMessage());
+            // ★ 날짜 예약 + 야간 제한 로직
+            boolean isReservation = false;
+            LocalDateTime scheduledTime = null;
+            LocalDateTime targetTime = now; 
+            
+            Integer pDay = user.getPreferredDay();
+            Integer pHour = user.getPreferredHour();
+
+            if (pDay != null && pHour != null) {
+                try {
+                    int lastDayOfMonth = YearMonth.of(currentYear, currentMonth).lengthOfMonth();
+                    int targetDay = Math.min(pDay, lastDayOfMonth); 
+                    targetTime = LocalDateTime.of(currentYear, currentMonth, targetDay, pHour, 0);
+                } catch (Exception e) { targetTime = now; }
+            }
+            
+            // ★ 금지 시간대(야간) 체크 및 보정
+            targetTime = adjustForBusinessHours(targetTime);
+
+            if (targetTime.isAfter(now)) {
+                isReservation = true;
+                scheduledTime = targetTime;
+            }
+
+            statusList.add(DeliveryStatus.builder()
+                    .invoiceId(item.getInvoiceId())
+                    .status(isReservation ? DeliveryStatusType.SCHEDULED : DeliveryStatusType.READY)
+                    .scheduledAt(scheduledTime) 
+                    .deliveryChannel(DeliveryChannelType.EMAIL)
+                    .retryCount(0)
+                    .build());
+
+            if (!isReservation) {
+                immediatePushItems.add(item);
+            }
         }
 
-
-        // 3. [Redis 작업] Pipelined를 통한 대량 적재
-        final String timeForRedis = finalRequestedAt;
+        // DB 저장 (Batch)
+        saveDeliveryStatus(statusList);
         
-        stringRedisTemplate.executePipelined((RedisCallback<Object>) connection -> {
-            for (MonthlyInvoiceRowDto item : items) {
+        
+        // Redis 작업 (Redisson Batch)
+        if (!immediatePushItems.isEmpty()) {
+            try {
+                RBatch batch = redissonClient.createBatch();
+                RScoredSortedSetAsync<String> batchZset = batch.getScoredSortedSet(DELAY_ZSET, StringCodec.INSTANCE);
+                long delayUntil = System.currentTimeMillis() + 1000; 
                 
-                DeliveryUser user = userMap.get(item.getUsersId());
-
-                if (user == null) {
-                    log.warn("🚨 회원 정보 없음 (Skip) - InvoiceId: {}", item.getInvoiceId());
-                    continue; 
+                for (MonthlyInvoiceRowDto item : immediatePushItems) {
+                  DeliveryUser user = userMap.get(item.getUsersId());
+                  Map<String, String> payload = new HashMap<>();
+                  payload.put("invoice_id", String.valueOf(item.getInvoiceId()));
+                  payload.put("delivery_channel", "EMAIL");
+                  payload.put("retry_count", "0");
+                  payload.put("email", user.getEmail()); 
+                  payload.put("phone", user.getPhone()); 
+                  payload.put("recipient_name", user.getName());
+                  payload.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
+                  payload.put("requested_at", currentRequestTime);
+                  payload.put("total_amount", formatMoney(item.getTotalAmount()));
+                  payload.put("dueDate", formatDate(item.getDueDate()));
+                  
+                  currentProcessingYyyymm = item.getBillingYyyymm();
+                  
+                  try {
+                      String json = objectMapper.writeValueAsString(payload);
+                      batchZset.addAsync(delayUntil, json);
+                  } catch (JsonProcessingException e) {
+                      log.error("JSON Error: {}", e.getMessage());
+                  }
                 }
-                
-                // 5. [데이터 변환] Worker가 요구하는 평문 Map 생성
-                Map<String, String> streamMap = new HashMap<>();
-                
-                // (A) Worker 제어용 필수 필드 (Worker 코드와 Key 일치시킴)
-                streamMap.put("invoice_id", String.valueOf(item.getInvoiceId()));
-                streamMap.put("delivery_channel", "EMAIL");
-                streamMap.put("retry_count", "0");
-                streamMap.put("email", user.getEmail()); 
-                streamMap.put("phone", user.getPhone()); 
-                
-                // (B) 실제 발송(이메일 본문)에 필요한 추가 정보들
-                streamMap.put("recipient_name", user.getName());
-                streamMap.put("billing_yyyymm", formatYyyymm(item.getBillingYyyymm()));
-                streamMap.put("total_amount", formatMoney(item.getTotalAmount()));
-                // 필요시 더 많은 필드 추가 가능 (MapRecord라 유연함)
-                streamMap.put("requested_at", timeForRedis);
-                
-                // 6. [MapRecord 생성]
-                MapRecord<String, String, String> record = StreamRecords.newRecord()
-                        .in(WAITING_STREAM) // 상수로 관리되는 Key
-                        .ofMap(streamMap);  // Map 그대로 넣음
-
-                // StringRedisTemplate의 connection을 사용하여 추가
-                stringRedisTemplate.opsForStream().add(record);
+                batch.execute();
+                log.info("✅ Loader: {}건 Redis Batch 적재 완료", immediatePushItems.size());
+            } catch (Exception e) {
+                log.error("🚨 Redis 적재 실패: {}", e.getMessage());
             }
-            return null;
-        });
-        
-        log.info("✅ Redis Stream 적재 완료 (Key: {}): {}건", WAITING_STREAM, items.size());
+        }
     }
 
-
-    // ────────────────────────────────────────────────────────────────
-    // Format Helpers
-    // ────────────────────────────────────────────────────────────────
-    
-    private String formatDate(TemporalAccessor date) {
-        if (date == null) return "";
-        return DateTimeFormatter.ofPattern("yyyy-MM-dd").format(date);
+    private LocalDateTime adjustForBusinessHours(LocalDateTime targetTime) {
+        int hour = targetTime.getHour();
+        if (hour >= BAN_START_HOUR) {
+            return targetTime.plusDays(1).withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        if (hour < BAN_END_HOUR) {
+            return targetTime.withHour(BAN_END_HOUR).withMinute(0).withSecond(0);
+        }
+        return targetTime;
     }
 
-    private String formatMoney(Long amount) {
-        if (amount == null) return "0";
-        return new DecimalFormat("#,###").format(amount);
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveDeliveryStatus(List<DeliveryStatus> statusList) {
+        try {
+            deliveryStatusRepository.saveAllIgnore(statusList);
+        } catch (Exception e) {
+            log.warn("DB 중복 무시: {}", e.getMessage());
+        }
     }
 
+    private String formatDate(TemporalAccessor date) { return date == null ? "" : DateTimeFormatter.ofPattern("yyyy-MM-dd").format(date); }
+    private String formatMoney(Long amount) { return amount == null ? "0" : new DecimalFormat("#,###").format(amount); }
     private String formatYyyymm(Integer yyyymm) {
         if (yyyymm == null) return "";
         String s = String.valueOf(yyyymm);
-        if (s.length() != 6) return s;
-        return s.substring(0, 4) + "년 " + s.substring(4, 6) + "월";
+        return s.length() == 6 ? s.substring(0, 4) + "년 " + s.substring(4, 6) + "월" : s;
     } 
 }

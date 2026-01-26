@@ -22,11 +22,12 @@ public class DeliveryPersistService {
         if (results.isEmpty()) return;
         
         LocalDateTime now = LocalDateTime.now();
+        int currentYyyymm = DeliveryLoaderService.currentProcessingYyyymm;
         
         // 1. 상태 업데이트 (SENT/FAILED)
         statusRepository.updateStatusBatch(results, now);
         
         // 2. 이력 적재
-        historyRepository.saveHistoryBatch(results, now);
+        historyRepository.saveHistoryBatch(results, now, currentYyyymm);
     }
 }

@@ -25,8 +25,8 @@ public class InvoiceSettlementFailureRepositoryImpl implements InvoiceSettlement
         // 1) fail_id는 AUTO_INCREMENT이므로 제외
         final String sql = """
             INSERT INTO monthly_invoice_batch_fail
-                (attempt_id, error_code, error_message, created_at, invoice_category_id, billing_history_id)
-            VALUES (?, ?, ?, ?, ?, ?)
+                (attempt_id, error_code, error_message, created_at, invoice_category_id, billing_history_id, invoice_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """;
 
         return jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
@@ -49,6 +49,7 @@ public class InvoiceSettlementFailureRepositoryImpl implements InvoiceSettlement
                 ps.setTimestamp(4, Timestamp.valueOf(row.getCreatedAt()));
                 ps.setInt(5, row.getInvoiceCategoryId());
                 ps.setLong(6, row.getBillingHistoryId());
+                ps.setLong(7, row.getInvoiceId());
             }
 
             @Override
