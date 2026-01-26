@@ -40,12 +40,14 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class DeliveryLoaderService {
-
+	
+	public static int currentProcessingYyyymm = 0;
+	
     private final DeliveryStatusRepository deliveryStatusRepository;
     private final DeliveryUserRepository deliveryUserRepository;
     private final RedissonClient redissonClient;
     private final ObjectMapper objectMapper;
-
+    
     private static final int BAN_START_HOUR = 21; 
     private static final int BAN_END_HOUR = 9;    
 
@@ -106,7 +108,8 @@ public class DeliveryLoaderService {
 
         // DB 저장 (Batch)
         saveDeliveryStatus(statusList);
-
+        
+        
         // Redis 작업 (Redisson Batch)
         if (!immediatePushItems.isEmpty()) {
             try {
@@ -127,6 +130,8 @@ public class DeliveryLoaderService {
                   payload.put("requested_at", currentRequestTime);
                   payload.put("total_amount", formatMoney(item.getTotalAmount()));
                   payload.put("dueDate", formatDate(item.getDueDate()));
+                  
+                  currentProcessingYyyymm = item.getBillingYyyymm();
                   
                   try {
                       String json = objectMapper.writeValueAsString(payload);

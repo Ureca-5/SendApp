@@ -19,6 +19,38 @@ public class DeliverySummaryRepository {
     private final JdbcTemplate jdbcTemplate;
     private static final DeliverySummaryRowMapper ROW_MAPPER = new DeliverySummaryRowMapper();
 
+    public void insertSummary(int billingYyyymm) {
+        String sql = """
+            INSERT INTO delivery_summary (
+                billing_yyyymm, delivery_channel, total_attempt_count, 
+                success_count, fail_count, success_rate, created_at, updated_at
+            ) 
+            SELECT 
+                billing_yyyymm, 
+                delivery_channel, 
+                COUNT(*) AS total_attempt_count, 
+                -- 실제 데이터 값인 'SENT'와 'FAILED'로 매칭
+                SUM(CASE WHEN status = 'SENT' THEN 1 ELSE 0 END) AS success_count, 
+                SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) AS fail_count, 
+                -- 성공률: (성공건수 / 전체건수) * 100
+                -- NULLIF를 사용하여 전체 건수가 0일 경우 발생하는 에러 방지
+                ROUND((SUM(CASE WHEN status = 'SENT' THEN 1 ELSE 0 END) / NULLIF(COUNT(*), 0)) * 100, 2) AS success_rate, 
+                NOW(6), NOW(6) 
+            FROM delivery_history 
+            WHERE billing_yyyymm = ? 
+            GROUP BY delivery_channel 
+            ON DUPLICATE KEY UPDATE 
+                total_attempt_count = VALUES(total_attempt_count), 
+                success_count = VALUES(success_count), 
+                fail_count = VALUES(fail_count), 
+                success_rate = VALUES(success_rate), 
+                updated_at = NOW(6)
+        """;
+
+        int affectedRows = jdbcTemplate.update(sql, billingYyyymm);
+        
+    }
+    
     /**
      * 내부 정적 RowMapper 클래스
      */
