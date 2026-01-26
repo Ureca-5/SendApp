@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
+import com.mycom.myapp.sendapp.delivery.dto.DeliveryRetryDto;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryStatus;
 import com.mycom.myapp.sendapp.delivery.entity.DeliveryUser;
 import com.mycom.myapp.sendapp.delivery.entity.enums.DeliveryChannelType;
@@ -145,6 +146,47 @@ public class DeliveryLoaderService {
             } catch (Exception e) {
                 log.error("🚨 Redis 적재 실패: {}", e.getMessage());
             }
+        }
+    }
+    
+    /**
+     * [Sync용] 유실 데이터 Redis 재적재 (DB 저장 단계 제외)
+     */
+    public void rePushToRedis(List<DeliveryRetryDto> targets) {
+        if (targets == null || targets.isEmpty()) return;
+
+        try {
+            RBatch batch = redissonClient.createBatch();
+            RScoredSortedSetAsync<String> batchZset = batch.getScoredSortedSet(DELAY_ZSET, StringCodec.INSTANCE);
+            
+            // 즉시 발송을 위해 현재 시간 + 1초로 스코어 설정
+            long delayUntil = System.currentTimeMillis() + 1000; 
+            String syncTime = LocalDateTime.now().toString();
+
+            for (DeliveryRetryDto target : targets) {
+                Map<String, String> payload = new HashMap<>();
+                payload.put("invoice_id", String.valueOf(target.getInvoiceId()));
+                payload.put("delivery_channel", target.getDeliveryChannel());
+                payload.put("retry_count", String.valueOf(target.getRetryCount()));
+                payload.put("email", target.getEmail());
+                payload.put("phone", target.getPhone());
+                payload.put("recipient_name", target.getRecipientName());
+                payload.put("billing_yyyymm", formatYyyymm(Integer.parseInt(target.getBillingYyyymm())));
+                payload.put("requested_at", syncTime); // 복구 시점 기록
+                payload.put("total_amount", formatMoney(target.getTotalAmount()));
+                payload.put("dueDate", formatDate(target.getDueDate())); // DTO에서 받은 dueDate 사용
+
+                try {
+                    String json = objectMapper.writeValueAsString(payload);
+                    batchZset.addAsync(delayUntil, json);
+                } catch (JsonProcessingException e) {
+                    log.error("JSON Error in Sync: {}", e.getMessage());
+                }
+            }
+            batch.execute();
+            log.info("🧟 [Sync] 유실 데이터 {}건 Redis 복구 완료", targets.size());
+        } catch (Exception e) {
+            log.error("🚨 [Sync] Redis 복구 적재 실패: {}", e.getMessage());
         }
     }
 

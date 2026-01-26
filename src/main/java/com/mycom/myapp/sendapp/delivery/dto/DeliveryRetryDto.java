@@ -1,5 +1,7 @@
 package com.mycom.myapp.sendapp.delivery.dto;
 
+import java.time.LocalDateTime;
+
 import lombok.Builder;
 import lombok.Getter;
 import lombok.ToString;
@@ -19,4 +21,5 @@ public class DeliveryRetryDto {
     private String receiverInfo;  // delivery_user.email (or phone)
     private String email;
     private String phone;
+    private LocalDateTime dueDate;
 }
