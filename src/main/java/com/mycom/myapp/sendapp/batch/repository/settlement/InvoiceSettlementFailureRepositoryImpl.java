@@ -58,4 +58,82 @@ public class InvoiceSettlementFailureRepositoryImpl implements InvoiceSettlement
             }
         });
     }
+
+    @Override
+    public List<MonthlyInvoiceBatchFailRowDto> findByInvoiceIdsAndCategoryIds(List<Long> invoiceIds, List<Integer> categoryIds) {
+        if (invoiceIds == null || invoiceIds.isEmpty() || categoryIds == null || categoryIds.isEmpty()) {
+            return List.of();
+        }
+
+        String invoiceInClause = String.join(",", invoiceIds.stream().map(id -> "?").toArray(String[]::new));
+        String categoryInClause = String.join(",", categoryIds.stream().map(id -> "?").toArray(String[]::new));
+
+        String sql = String.format("""
+            SELECT fail_id, attempt_id, error_code, error_message, created_at, invoice_id, invoice_category_id, billing_history_id
+            FROM monthly_invoice_batch_fail
+            WHERE invoice_id IN (%s)
+              AND invoice_category_id IN (%s)
+            """, invoiceInClause, categoryInClause);
+
+        Object[] args = new Object[invoiceIds.size() + categoryIds.size()];
+        int idx = 0;
+        for (Long id : invoiceIds) {
+            args[idx++] = id;
+        }
+        for (Integer id : categoryIds) {
+            args[idx++] = id;
+        }
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> MonthlyInvoiceBatchFailRowDto.builder()
+                .failId(rs.getLong("fail_id"))
+                .attemptId(rs.getObject("attempt_id") == null ? null : rs.getLong("attempt_id"))
+                .errorCode(rs.getString("error_code"))
+                .errorMessage(rs.getString("error_message"))
+                .createdAt(rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime())
+                .invoiceId(rs.getObject("invoice_id") == null ? null : rs.getLong("invoice_id"))
+                .invoiceCategoryId(rs.getInt("invoice_category_id"))
+                .billingHistoryId(rs.getLong("billing_history_id"))
+                .build(), args);
+    }
+
+    @Override
+    public List<MonthlyInvoiceBatchFailRowDto> findMicroByInvoiceIds(List<Long> invoiceIds, int microCategoryId, Long lastFailId, int limit) {
+        if (invoiceIds == null || invoiceIds.isEmpty()) {
+            return List.of();
+        }
+        long safeLastFailId = lastFailId == null ? 0L : lastFailId;
+        int safeLimit = limit <= 0 ? 5000 : limit;
+
+        String invoiceInClause = String.join(",", invoiceIds.stream().map(id -> "?").toArray(String[]::new));
+
+        String sql = String.format("""
+            SELECT fail_id, attempt_id, error_code, error_message, created_at, invoice_id, invoice_category_id, billing_history_id
+            FROM monthly_invoice_batch_fail
+            WHERE invoice_id IN (%s)
+              AND invoice_category_id = ?
+              AND fail_id > ?
+            ORDER BY fail_id ASC
+            LIMIT ?
+            """, invoiceInClause);
+
+        Object[] args = new Object[invoiceIds.size() + 3];
+        int idx = 0;
+        for (Long id : invoiceIds) {
+            args[idx++] = id;
+        }
+        args[idx++] = microCategoryId;
+        args[idx++] = safeLastFailId;
+        args[idx] = safeLimit;
+
+        return jdbcTemplate.query(sql, (rs, rowNum) -> MonthlyInvoiceBatchFailRowDto.builder()
+                .failId(rs.getLong("fail_id"))
+                .attemptId(rs.getObject("attempt_id") == null ? null : rs.getLong("attempt_id"))
+                .errorCode(rs.getString("error_code"))
+                .errorMessage(rs.getString("error_message"))
+                .createdAt(rs.getTimestamp("created_at") == null ? null : rs.getTimestamp("created_at").toLocalDateTime())
+                .invoiceId(rs.getObject("invoice_id") == null ? null : rs.getLong("invoice_id"))
+                .invoiceCategoryId(rs.getInt("invoice_category_id"))
+                .billingHistoryId(rs.getLong("billing_history_id"))
+                .build(), args);
+    }
 }

@@ -5,6 +5,7 @@ import com.mycom.myapp.sendapp.batch.dto.MonthlyInvoiceRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscribeBillingHistoryRowDto;
 import com.mycom.myapp.sendapp.batch.dto.SubscriptionSegmentDto;
 import com.mycom.myapp.sendapp.batch.enums.ServiceCategory;
+import com.mycom.myapp.sendapp.batch.support.BatchInvoiceProperties;
 import com.mycom.myapp.sendapp.batch.support.CategoryIdRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class SubscriptionSegmentCalculator {
     private final CategoryIdRegistry categoryIdRegistry;
+    private final BatchInvoiceProperties batchInvoiceProperties;
 
     /**
      * chunk 단위 구독 원천 데이터(rows)를 받아 세그먼트 목록을 생성합니다.
@@ -112,6 +114,8 @@ public class SubscriptionSegmentCalculator {
 
         int monthLength = periodStart.lengthOfMonth(); // 해당 년월의 일수
 
+        int failureWeight = batchInvoiceProperties.getFailureWeight();
+
         int addonCategoryId = categoryIdRegistry.getCategoryId(ServiceCategory.ADDON);
         boolean isPlanSettlementSuccess = true;
         for (int i = 0; i < buffer.size(); i++) {
@@ -180,7 +184,7 @@ public class SubscriptionSegmentCalculator {
                                     10,                                   // 소수점 자리수 (Scale, 넉넉하게 설정)
                                     RoundingMode.HALF_DOWN                  // 반내림 모드 (필수)
                             );
-                    if(cur.getUsersId() % 100 == 0) {
+                    if(failureWeight > 0 && cur.getUsersId() % failureWeight == 0) {
                         String categoryName = (cur.getSubscribeCategoryId() == 1 ? "요금제" : "기타요금제");
                         log.info("정산 실패. 회원 식별자: {}, 원천 카테고리: {}, 원천 식별자: {}", cur.getUsersId(), categoryName, cur.getSubscribeBillingHistoryId());
                         throw new RuntimeException("정산 배치 실패 예외 처리 테스트용 예외 발생");

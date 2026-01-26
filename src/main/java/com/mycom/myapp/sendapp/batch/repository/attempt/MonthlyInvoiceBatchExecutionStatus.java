@@ -6,5 +6,6 @@ package com.mycom.myapp.sendapp.batch.repository.attempt;
 public enum MonthlyInvoiceBatchExecutionStatus {
     STARTED,
     COMPLETED,
-    FAILED
+    FAILED,
+    INTERRUPTED
 }
