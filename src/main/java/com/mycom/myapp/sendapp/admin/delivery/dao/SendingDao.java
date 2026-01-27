@@ -195,7 +195,7 @@ public class SendingDao {
                         rs.getLong("total_attempt_count"),
                         rs.getLong("success_count"),
                         rs.getLong("fail_count"),
-                        (Integer) rs.getObject("success_rate"),
+                        rs.getInt("success_rate"),
                         toLdt(rs.getTimestamp("updated_at"))
                 )
         );
